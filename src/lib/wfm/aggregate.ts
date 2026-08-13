@@ -1,0 +1,116 @@
+import type { AgentMetrics, Kpis, LoadCategory, SessionRecord, Shift } from "./types";
+
+export function categorize(
+  occupancy: number | null,
+  categories: LoadCategory[],
+): LoadCategory | null {
+  if (occupancy === null) return null;
+  const sorted = [...categories].sort((a, b) => a.order - b.order);
+  return sorted.find((c) => occupancy >= c.min && occupancy <= c.max) ?? null;
+}
+
+/** Occupancy from aggregated durations — never an average of session percentages. */
+export function computeOccupancy(productiveSeconds: number, sessionSeconds: number): number | null {
+  if (!sessionSeconds || sessionSeconds <= 0) return null;
+  return (productiveSeconds / sessionSeconds) * 100;
+}
+
+export function aggregateAgents(
+  records: SessionRecord[],
+  assignments: Record<string, string | null>,
+  shifts: Shift[],
+  categories: LoadCategory[],
+): AgentMetrics[] {
+  const byAgent = new Map<string, SessionRecord[]>();
+  for (const record of records) {
+    const list = byAgent.get(record.agent);
+    if (list) list.push(record);
+    else byAgent.set(record.agent, [record]);
+  }
+
+  return Array.from(byAgent.entries()).map(([agent, agentRecords]) => {
+    const sum = (pick: (r: SessionRecord) => number) =>
+      agentRecords.reduce((acc, r) => acc + pick(r), 0);
+
+    const productiveSeconds = sum((r) => r.productiveSeconds);
+    const sessionSeconds = sum((r) => r.sessionSeconds);
+    const occupancy = computeOccupancy(productiveSeconds, sessionSeconds);
+    const shiftId = assignments[agent] ?? null;
+    const shift = shifts.find((s) => s.id === shiftId) ?? null;
+
+    return {
+      agent,
+      shiftId: shift ? shift.id : null,
+      shiftName: shift ? shift.name : "Sin turno asignado",
+      sessions: agentRecords.length,
+      calls: sum((r) => r.calls),
+      conversationSeconds: sum((r) => r.conversationSeconds),
+      acwSeconds: sum((r) => r.acwSeconds),
+      productiveSeconds,
+      sessionSeconds,
+      occupancy,
+      category: categorize(occupancy, categories),
+      records: [...agentRecords].sort(
+        (a, b) => (b.start?.getTime() ?? 0) - (a.start?.getTime() ?? 0),
+      ),
+    };
+  });
+}
+
+/**
+ * Average occupancy is weighted operationally: total productive time over total
+ * session time across all filtered agents (not a mean of agent percentages).
+ */
+export function computeKpis(agents: AgentMetrics[]): Kpis {
+  const productiveSeconds = agents.reduce((a, x) => a + x.productiveSeconds, 0);
+  const sessionSeconds = agents.reduce((a, x) => a + x.sessionSeconds, 0);
+  const count = (status: LoadCategory["status"]) =>
+    agents.filter((a) => a.category?.status === status).length;
+
+  return {
+    agents: agents.length,
+    sessions: agents.reduce((a, x) => a + x.sessions, 0),
+    calls: agents.reduce((a, x) => a + x.calls, 0),
+    productiveSeconds,
+    sessionSeconds,
+    avgOccupancy: computeOccupancy(productiveSeconds, sessionSeconds),
+    low: count("low"),
+    balanced: count("balanced"),
+    high: count("high"),
+  };
+}
+
+export function validateCategories(categories: LoadCategory[]): string[] {
+  const errors: string[] = [];
+  const sorted = [...categories].sort((a, b) => a.min - b.min);
+  sorted.forEach((c) => {
+    if (!c.name.trim()) errors.push("Todas las categorías necesitan un nombre.");
+    if (isNaN(c.min) || isNaN(c.max)) errors.push(`Rango no numérico en "${c.name}".`);
+    else if (c.min > c.max) errors.push(`El mínimo supera al máximo en "${c.name}".`);
+    if (c.min < 0 || c.max > 100) errors.push(`El rango de "${c.name}" debe estar entre 0 y 100.`);
+  });
+  for (let i = 1; i < sorted.length; i += 1) {
+    const prev = sorted[i - 1]!;
+    const current = sorted[i]!;
+    if (current.min <= prev.max) {
+      errors.push(`Los rangos de "${prev.name}" y "${current.name}" se solapan.`);
+    }
+  }
+  return Array.from(new Set(errors));
+}
+
+export function isValidTime(value: string): boolean {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
+export function shiftDurationLabel(shift: Shift): string {
+  const toMinutes = (t: string) => {
+    const [h, m] = t.split(":");
+    return Number(h) * 60 + Number(m);
+  };
+  let diff = toMinutes(shift.end) - toMinutes(shift.start);
+  if (diff <= 0) diff += 24 * 60;
+  const hours = diff / 60;
+  const crosses = toMinutes(shift.end) <= toMinutes(shift.start);
+  return `${hours}h${crosses ? " · cruza medianoche" : ""}`;
+}
