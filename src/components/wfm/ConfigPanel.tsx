@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,10 +41,13 @@ function Section({
   );
 }
 
-export function ConfigPanel({ agentNames }: { agentNames: string[] }) {
-  const { categories, setCategories, shifts, setShifts, assignments, assignShift } = useWfm();
+export function ConfigPanel() {
+  const { categories, setCategories, shifts, setShifts } = useWfm();
   const [draftCategories, setDraftCategories] = useState<LoadCategory[]>(categories);
   const [draftShifts, setDraftShifts] = useState<Shift[]>(shifts);
+
+  useEffect(() => setDraftCategories(categories), [categories]);
+  useEffect(() => setDraftShifts(shifts), [shifts]);
 
   const categoryErrors = useMemo(() => validateCategories(draftCategories), [draftCategories]);
   const shiftErrors = useMemo(
@@ -174,7 +177,7 @@ export function ConfigPanel({ agentNames }: { agentNames: string[] }) {
 
       <Section
         title="Turnos"
-        description="Los turnos que cruzan medianoche (p. ej. Noche 23:00–07:00) están soportados."
+        description="Cada agente se asigna automáticamente al horario configurado que más se solapa con el inicio y fin de sus sesiones. Los turnos que cruzan medianoche están soportados."
       >
         <div className="space-y-3">
           {draftShifts.map((shift, index) => (
@@ -244,43 +247,6 @@ export function ConfigPanel({ agentNames }: { agentNames: string[] }) {
         </Button>
       </Section>
 
-      <Section
-        title="Asignación de agentes a turnos"
-        description="El turno se detecta automáticamente por la hora de inicio/fin de sesión. Aquí puedes forzar un turno manual, que prevalece y se conserva al importar un nuevo fichero."
-      >
-        {agentNames.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            Importa un Excel para detectar agentes y asignarles turno.
-          </p>
-        ) : (
-          <div className="grid gap-2 md:grid-cols-2">
-            {agentNames.map((name) => (
-              <div
-                key={name}
-                className="border-border flex items-center justify-between gap-3 rounded-md border p-2"
-              >
-                <span className="truncate text-sm">{name}</span>
-                <Select
-                  value={assignments[name] ?? "none"}
-                  onValueChange={(value) => assignShift(name, value === "none" ? null : value)}
-                >
-                  <SelectTrigger className="w-[170px] shrink-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sin turno asignado</SelectItem>
-                    {shifts.map((shift) => (
-                      <SelectItem key={shift.id} value={shift.id}>
-                        {shift.name} ({shift.start}–{shift.end})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
     </div>
   );
 }
