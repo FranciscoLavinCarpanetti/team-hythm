@@ -12,6 +12,7 @@ export type SortKey =
   | "conversationSeconds"
   | "acwSeconds"
   | "productiveSeconds"
+  | "idleSeconds"
   | "occupancy"
   | "category";
 
@@ -25,6 +26,7 @@ const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: "conversationSeconds", label: "T. Conversación", numeric: true },
   { key: "acwSeconds", label: "T. ACW", numeric: true },
   { key: "productiveSeconds", label: "T. Productivo", numeric: true },
+  { key: "idleSeconds", label: "T. Inactivo", numeric: true },
   { key: "occupancy", label: "% Ocupación", numeric: true },
   { key: "category", label: "Categoría de Carga" },
 ];
@@ -126,6 +128,12 @@ export function AgentTable({
               </td>
               <td className="px-3 py-1.5 text-right font-mono tabular-nums">
                 {formatSeconds(agent.productiveSeconds)}
+              </td>
+              <td
+                className="px-3 py-1.5 text-right font-mono font-semibold tabular-nums"
+                title={`Jornada activa esperada: ${formatSeconds(agent.expectedActiveSeconds)} (${agent.workedDays} día(s) × 7:30)`}
+              >
+                {formatSeconds(agent.idleSeconds)}
               </td>
               <td className="px-3 py-1.5">
                 <OccupancyCell occupancy={agent.occupancy} category={agent.category} />
