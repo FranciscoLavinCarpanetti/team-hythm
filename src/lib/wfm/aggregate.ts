@@ -179,6 +179,7 @@ export function aggregateAgents(
       agent,
       shiftId: shift ? shift.id : null,
       shiftName: shift ? shift.name : "Sin turno asignado",
+      shiftBreakdown: shiftBreakdown(agentRecords, shifts),
       sessions: agentRecords.length,
       calls: sum((r) => r.calls),
       conversationSeconds: sum((r) => r.conversationSeconds),
