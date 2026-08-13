@@ -1,5 +1,8 @@
 import type { AgentMetrics, Kpis, LoadCategory, SessionRecord, Shift } from "./types";
 
+/** Jornada diaria activa esperada: 8 h menos 30 min de descanso. */
+export const ACTIVE_SECONDS_PER_DAY = 7.5 * 3600;
+
 export function categorize(
   occupancy: number | null,
   categories: LoadCategory[],
@@ -132,6 +135,11 @@ export function aggregateAgents(
     const sessionSeconds = sum((r) => r.sessionSeconds);
     const occupancy = computeOccupancy(productiveSeconds, sessionSeconds);
     const shift = detectShift(agentRecords, shifts);
+    const workedDays = new Set(
+      agentRecords.map((r) => r.operationalDate).filter((d): d is string => Boolean(d)),
+    ).size;
+    const expectedActiveSeconds = workedDays * ACTIVE_SECONDS_PER_DAY;
+    const idleSeconds = Math.max(0, expectedActiveSeconds - productiveSeconds);
 
     return {
       agent,
@@ -143,6 +151,9 @@ export function aggregateAgents(
       acwSeconds: sum((r) => r.acwSeconds),
       productiveSeconds,
       sessionSeconds,
+      workedDays,
+      expectedActiveSeconds,
+      idleSeconds,
       occupancy,
       category: categorize(occupancy, categories),
       records: [...agentRecords].sort(
@@ -162,12 +173,16 @@ export function computeKpis(agents: AgentMetrics[]): Kpis {
   const count = (status: LoadCategory["status"]) =>
     agents.filter((a) => a.category?.status === status).length;
 
+  const expectedActiveSeconds = agents.reduce((a, x) => a + x.expectedActiveSeconds, 0);
+
   return {
     agents: agents.length,
     sessions: agents.reduce((a, x) => a + x.sessions, 0),
     calls: agents.reduce((a, x) => a + x.calls, 0),
     productiveSeconds,
     sessionSeconds,
+    expectedActiveSeconds,
+    idleSeconds: agents.reduce((a, x) => a + x.idleSeconds, 0),
     avgOccupancy: computeOccupancy(productiveSeconds, sessionSeconds),
     low: count("low"),
     balanced: count("balanced"),

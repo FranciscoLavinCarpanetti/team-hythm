@@ -6,6 +6,7 @@ import {
   PhoneCall,
   Scale as ScaleIcon,
   Timer,
+  TimerOff,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -52,11 +53,17 @@ function Kpi({
 export function KpiSummary({ kpis }: { kpis: Kpis }) {
   return (
     <section aria-label="Indicadores clave" className="space-y-2">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
         <Kpi label="Agentes" value={String(kpis.agents)} icon={Users} />
         <Kpi label="Sesiones" value={String(kpis.sessions)} icon={Activity} />
         <Kpi label="Llamadas" value={kpis.calls.toLocaleString("es-ES")} icon={PhoneCall} />
         <Kpi label="T. Productivo" value={formatSeconds(kpis.productiveSeconds)} icon={Timer} />
+        <Kpi
+          label="T. Inactivo"
+          value={formatSeconds(kpis.idleSeconds)}
+          hint={`Jornada esperada: ${formatSeconds(kpis.expectedActiveSeconds)}`}
+          icon={TimerOff}
+        />
         <Kpi
           label="Ocupación media"
           value={

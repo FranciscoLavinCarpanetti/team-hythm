@@ -50,6 +50,9 @@ export type AgentMetrics = {
   acwSeconds: number;
   productiveSeconds: number;
   sessionSeconds: number;
+  workedDays: number;
+  expectedActiveSeconds: number;
+  idleSeconds: number;
   occupancy: number | null;
   category: LoadCategory | null;
   records: SessionRecord[];
@@ -61,6 +64,8 @@ export type Kpis = {
   calls: number;
   productiveSeconds: number;
   sessionSeconds: number;
+  expectedActiveSeconds: number;
+  idleSeconds: number;
   avgOccupancy: number | null;
   low: number;
   balanced: number;

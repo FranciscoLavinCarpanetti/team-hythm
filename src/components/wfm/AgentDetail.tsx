@@ -40,6 +40,12 @@ export function AgentDetail({
               <Metric label="T. Conversación" value={formatSeconds(agent.conversationSeconds)} />
               <Metric label="T. ACW" value={formatSeconds(agent.acwSeconds)} />
               <Metric label="T. Productivo" value={formatSeconds(agent.productiveSeconds)} />
+              <Metric label="Días trabajados" value={String(agent.workedDays)} />
+              <Metric
+                label="Jornada activa esperada"
+                value={formatSeconds(agent.expectedActiveSeconds)}
+              />
+              <Metric label="T. Inactivo" value={formatSeconds(agent.idleSeconds)} />
               <Metric
                 label="% Ocupación"
                 value={
