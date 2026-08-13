@@ -44,6 +44,7 @@ export type AgentMetrics = {
   agent: string;
   shiftId: string | null;
   shiftName: string;
+  shiftBreakdown: { shiftId: string | null; shiftName: string; days: number; percentage: number }[];
   sessions: number;
   calls: number;
   conversationSeconds: number;
