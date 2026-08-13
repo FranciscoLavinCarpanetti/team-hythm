@@ -115,6 +115,40 @@ export function detectShift(records: SessionRecord[], shifts: Shift[]): Shift | 
   return bestId ? (shifts.find((s) => s.id === bestId) ?? null) : null;
 }
 
+/** Reparto de días trabajados por turno (turno dominante de cada día operativo). */
+export function shiftBreakdown(
+  records: SessionRecord[],
+  shifts: Shift[],
+): { shiftId: string | null; shiftName: string; days: number; percentage: number }[] {
+  const byDay = new Map<string, SessionRecord[]>();
+  for (const record of records) {
+    if (!record.operationalDate) continue;
+    const list = byDay.get(record.operationalDate);
+    if (list) list.push(record);
+    else byDay.set(record.operationalDate, [record]);
+  }
+
+  const days = new Map<string, { name: string; count: number }>();
+  byDay.forEach((dayRecords) => {
+    const shift = detectShift(dayRecords, shifts);
+    const key = shift ? shift.id : "__none__";
+    const name = shift ? shift.name : "Sin turno asignado";
+    const current = days.get(key);
+    if (current) current.count += 1;
+    else days.set(key, { name, count: 1 });
+  });
+
+  const total = Array.from(days.values()).reduce((a, x) => a + x.count, 0);
+  return Array.from(days.entries())
+    .map(([key, value]) => ({
+      shiftId: key === "__none__" ? null : key,
+      shiftName: value.name,
+      days: value.count,
+      percentage: total ? (value.count / total) * 100 : 0,
+    }))
+    .sort((a, b) => b.percentage - a.percentage || a.shiftName.localeCompare(b.shiftName, "es"));
+}
+
 export function aggregateAgents(
   records: SessionRecord[],
   shifts: Shift[],
