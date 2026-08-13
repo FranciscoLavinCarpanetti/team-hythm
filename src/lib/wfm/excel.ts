@@ -104,7 +104,8 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
   }
 
   const columns = resolveColumns(headers);
-  const missing = REQUIRED.filter((key) => !columns[key]).map((key) => LABELS[key]);
+  const col = (key: string): string => columns[key] ?? "";
+  const missing = REQUIRED.filter((key) => !columns[key]).map((key) => LABELS[key] ?? key);
   if (missing.length) {
     throw new ExcelValidationError("Faltan columnas obligatorias en el Excel", missing);
   }
@@ -119,8 +120,8 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
 
   rows.forEach((row, index) => {
     const rowNumber = index + 2;
-    const agent = String(row[columns.agent] ?? "").trim();
-    const sessionId = String(row[columns.sessionId] ?? "").trim();
+    const agent = String(row[col("agent")] ?? "").trim();
+    const sessionId = String(row[col("sessionId")] ?? "").trim();
     if (!agent || !sessionId) {
       warnings.push({ row: rowNumber, message: "Fila ignorada: falta agente o id de sesión." });
       return;
@@ -133,10 +134,10 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
     }
 
     const durations = {
-      sessionSeconds: parseDurationToSeconds(row[columns.sessionTime]),
-      conversationSeconds: parseDurationToSeconds(row[columns.conversation]),
-      acwSeconds: parseDurationToSeconds(row[columns.acw]),
-      productiveSeconds: parseDurationToSeconds(row[columns.productive]),
+      sessionSeconds: parseDurationToSeconds(row[col("sessionTime")]),
+      conversationSeconds: parseDurationToSeconds(row[col("conversation")]),
+      acwSeconds: parseDurationToSeconds(row[col("acw")]),
+      productiveSeconds: parseDurationToSeconds(row[col("productive")]),
     };
     const invalidDuration = Object.entries(durations).find(([, v]) => v === null);
     if (invalidDuration) {
@@ -147,14 +148,14 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
       return;
     }
 
-    const calls = parseNumber(row[columns.calls]);
+    const calls = parseNumber(row[col("calls")]);
     if (calls === null || calls < 0) {
       warnings.push({ row: rowNumber, message: `Fila ignorada: nº de llamadas no válido.` });
       return;
     }
 
-    const start = parseDateValue(row[columns.start]);
-    const end = parseDateValue(row[columns.end]);
+    const start = parseDateValue(row[col("start")]);
+    const end = parseDateValue(row[col("end")]);
     if (!start && !end) {
       warnings.push({ row: rowNumber, message: `Sesión ${sessionId} sin fechas válidas.` });
     }
@@ -164,7 +165,7 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
     records.push({
       sessionId,
       agent,
-      desk: columns.desk ? String(row[columns.desk] ?? "").trim() : "",
+      desk: columns["desk"] ? String(row[col("desk")] ?? "").trim() : "",
       start,
       end,
       operationalDate: reference ? toDateKey(reference) : null,
