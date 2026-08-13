@@ -110,7 +110,24 @@ export function AgentTable({
 
               <td className="px-3.5 py-2 font-medium">{agent.agent}</td>
               <td className="px-3.5 py-2">
-                {agent.shiftId ? (
+                {agent.shiftBreakdown.length > 1 ? (
+                  <div className="flex flex-col gap-0.5">
+                    {agent.shiftBreakdown.map((item) => (
+                      <span
+                        key={item.shiftId ?? "none"}
+                        className="flex items-center justify-between gap-2 text-xs"
+                        title={`${item.days} día(s)`}
+                      >
+                        <span className={cn(!item.shiftId && "text-muted-foreground italic")}>
+                          {item.shiftName}
+                        </span>
+                        <span className="font-mono tabular-nums">
+                          {item.percentage.toFixed(2).replace(".", ",")}%
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                ) : agent.shiftId ? (
                   agent.shiftName
                 ) : (
                   <span className="text-muted-foreground italic">Sin turno asignado</span>
