@@ -15,6 +15,44 @@ export function computeOccupancy(productiveSeconds: number, sessionSeconds: numb
   return (productiveSeconds / sessionSeconds) * 100;
 }
 
+
+const toMinutes = (t: string) => {
+  const [h, m] = t.split(":");
+  return Number(h) * 60 + Number(m);
+};
+
+/** True when the given clock minute falls inside the shift window (midnight-safe). */
+export function isWithinShift(minutes: number, shift: Shift): boolean {
+  const start = toMinutes(shift.start);
+  const end = toMinutes(shift.end);
+  if (start === end) return true;
+  return start < end ? minutes >= start && minutes < end : minutes >= start || minutes < end;
+}
+
+/** Shift matching a session, derived from its start time (fallback: end time). */
+export function shiftForSession(record: SessionRecord, shifts: Shift[]): Shift | null {
+  const ref = record.start ?? record.end;
+  if (!ref) return null;
+  const minutes = ref.getHours() * 60 + ref.getMinutes();
+  return shifts.find((s) => isWithinShift(minutes, s)) ?? null;
+}
+
+/** Dominant shift for an agent: the one covering most session time. */
+export function detectShift(records: SessionRecord[], shifts: Shift[]): Shift | null {
+  const weight = new Map<string, number>();
+  for (const record of records) {
+    const shift = shiftForSession(record, shifts);
+    if (!shift) continue;
+    weight.set(shift.id, (weight.get(shift.id) ?? 0) + (record.sessionSeconds || 1));
+  }
+  let best: { id: string; value: number } | null = null;
+  weight.forEach((value, id) => {
+    if (!best || value > best.value) best = { id, value };
+  });
+  const bestId = (best as { id: string; value: number } | null)?.id;
+  return bestId ? (shifts.find((s) => s.id === bestId) ?? null) : null;
+}
+
 export function aggregateAgents(
   records: SessionRecord[],
   assignments: Record<string, string | null>,
@@ -35,13 +73,18 @@ export function aggregateAgents(
     const productiveSeconds = sum((r) => r.productiveSeconds);
     const sessionSeconds = sum((r) => r.sessionSeconds);
     const occupancy = computeOccupancy(productiveSeconds, sessionSeconds);
-    const shiftId = assignments[agent] ?? null;
-    const shift = shifts.find((s) => s.id === shiftId) ?? null;
+    // Shift is derived from the session start/end times; a manual assignment overrides it.
+    const manualId = assignments[agent] ?? null;
+    const manualShift = manualId ? (shifts.find((s) => s.id === manualId) ?? null) : null;
+    const detected = detectShift(agentRecords, shifts);
+    const shift = manualShift ?? detected;
 
     return {
       agent,
       shiftId: shift ? shift.id : null,
-      shiftName: shift ? shift.name : "Sin turno asignado",
+      shiftName: shift
+        ? `${shift.name}${!manualShift ? " (auto)" : ""}`
+        : "Sin turno asignado",
       sessions: agentRecords.length,
       calls: sum((r) => r.calls),
       conversationSeconds: sum((r) => r.conversationSeconds),

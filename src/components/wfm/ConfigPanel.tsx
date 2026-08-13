@@ -246,7 +246,7 @@ export function ConfigPanel({ agentNames }: { agentNames: string[] }) {
 
       <Section
         title="Asignación de agentes a turnos"
-        description="La asignación es independiente del Excel y se conserva al importar un nuevo fichero."
+        description="El turno se detecta automáticamente por la hora de inicio/fin de sesión. Aquí puedes forzar un turno manual, que prevalece y se conserva al importar un nuevo fichero."
       >
         {agentNames.length === 0 ? (
           <p className="text-muted-foreground text-sm">
