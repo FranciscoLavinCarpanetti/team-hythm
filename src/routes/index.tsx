@@ -138,63 +138,73 @@ function Dashboard() {
                 <UploadPanel compact />
                 <KpiSummary kpis={kpis} />
 
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative min-w-[220px] flex-1">
-                    <Search className="text-muted-foreground absolute top-1/2 left-2 size-4 -translate-y-1/2" />
-                    <Input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Buscar agente…"
-                      className="pl-8"
-                    />
+                <section className="border-border bg-card shadow-card space-y-3 rounded-md border p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h2 className="text-sm font-semibold">Detalle por agente</h2>
+                      <p className="text-muted-foreground text-xs">
+                        {visibleAgents.length} agentes visibles
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="relative min-w-[200px]">
+                        <Search className="text-muted-foreground absolute top-1/2 left-2 size-4 -translate-y-1/2" />
+                        <Input
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                          placeholder="Buscar agente…"
+                          className="pl-8"
+                        />
+                      </div>
+                      <Select value={shiftFilter} onValueChange={setShiftFilter}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos los turnos</SelectItem>
+                          {shifts.map((shift) => (
+                            <SelectItem key={shift.id} value={shift.id}>
+                              {shift.name}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="none">Sin turno</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {dates.length > 1 && (
+                        <Select value={dateFilter} onValueChange={setDateFilter}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todas las fechas</SelectItem>
+                            {dates.map((date) => (
+                              <SelectItem key={date} value={date}>
+                                {formatDateKey(date)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {dates.length === 1 && (
+                        <span className="text-muted-foreground text-xs">
+                          Fecha operativa: {formatDateKey(dates[0]!)}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <Select value={shiftFilter} onValueChange={setShiftFilter}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos los turnos</SelectItem>
-                      {shifts.map((shift) => (
-                        <SelectItem key={shift.id} value={shift.id}>
-                          {shift.name}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="none">Sin turno</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {dates.length > 1 && (
-                    <Select value={dateFilter} onValueChange={setDateFilter}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todas las fechas</SelectItem>
-                        {dates.map((date) => (
-                          <SelectItem key={date} value={date}>
-                            {formatDateKey(date)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  {dates.length === 1 && (
-                    <span className="text-muted-foreground text-xs">
-                      Fecha operativa: {formatDateKey(dates[0]!)}
-                    </span>
-                  )}
-                </div>
 
-                <AgentTable
-                  agents={visibleAgents}
-                  sort={sort}
-                  onSortChange={setSort}
-                  onSelect={setSelected}
-                />
-                <p className="text-muted-foreground text-xs">
-                  La ocupación se calcula con duraciones agregadas (T. productivo / T. sesión), no
-                  promediando porcentajes de sesión.
-                </p>
+                  <AgentTable
+                    agents={visibleAgents}
+                    sort={sort}
+                    onSortChange={setSort}
+                    onSelect={setSelected}
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    La ocupación se calcula con duraciones agregadas (T. productivo / T. sesión), no
+                    promediando porcentajes de sesión.
+                  </p>
+                </section>
+
               </>
             )}
           </TabsContent>
