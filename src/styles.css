@@ -67,6 +67,8 @@
   --color-status-high-foreground: var(--status-high-foreground);
   --color-surface: var(--surface);
   --color-surface-foreground: var(--surface-foreground);
+  --color-secondary-brand: var(--secondary-brand);
+  --color-secondary-brand-foreground: var(--secondary-brand-foreground);
   --shadow-card: var(--shadow-card-value);
 }
 
@@ -114,6 +116,8 @@
   --status-high-foreground: oklch(0.28 0.12 27);
   --surface: oklch(0.972 0.003 247.9);
   --surface-foreground: oklch(0.239 0 90);
+  --secondary-brand: oklch(0.772 0.173 64.4);
+  --secondary-brand-foreground: oklch(0.239 0 90);
   --shadow-card-value: 0 1px 2px oklch(0.27 0.064 278.7 / 8%);
 }
 
@@ -158,6 +162,8 @@
   --status-high-foreground: oklch(0.97 0.02 30);
   --surface: oklch(0.22 0.048 278.7);
   --surface-foreground: oklch(0.984 0.003 247.858);
+  --secondary-brand: oklch(0.772 0.173 64.4);
+  --secondary-brand-foreground: oklch(0.239 0 90);
   --shadow-card-value: 0 1px 2px oklch(0 0 0 / 40%);
 }
 
