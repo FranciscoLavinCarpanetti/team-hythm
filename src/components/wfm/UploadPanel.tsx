@@ -86,7 +86,8 @@ export function UploadPanel({ compact = false }: { compact?: boolean }) {
           ref={inputRef}
           type="file"
           accept=".xlsx"
-          className="hidden"
+          className="sr-only"
+          tabIndex={-1}
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) void handleFile(file);
