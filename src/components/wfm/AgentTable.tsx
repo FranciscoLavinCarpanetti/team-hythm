@@ -61,16 +61,16 @@ export function AgentTable({
   }
 
   return (
-    <div className="border-border bg-card overflow-x-auto rounded-md border">
+    <div className="border-border bg-card shadow-card overflow-x-auto rounded-md border">
       <table className="w-full min-w-[900px] border-collapse text-sm">
-        <thead>
-          <tr className="bg-secondary text-secondary-foreground">
+        <thead className="sticky top-0 z-10">
+          <tr className="bg-primary text-primary-foreground">
             {COLUMNS.map((column) => (
               <th
                 key={column.key}
                 scope="col"
                 className={cn(
-                  "border-border/60 border-b px-3 py-2 text-[11px] font-semibold tracking-wide uppercase",
+                  "border-primary/60 border-b px-3 py-2.5 text-[11px] font-semibold tracking-wide uppercase",
                   column.numeric ? "text-right" : "text-left",
                 )}
               >
@@ -103,8 +103,9 @@ export function AgentTable({
               onKeyDown={(e) => {
                 if (e.key === "Enter") onSelect(agent);
               }}
-              className="border-border/60 hover:bg-accent focus-visible:bg-accent cursor-pointer border-b last:border-0"
+              className="border-border/60 odd:bg-surface/60 hover:bg-accent/40 focus-visible:bg-accent/40 cursor-pointer border-b transition-colors last:border-0"
             >
+
               <td className="px-3 py-1.5 font-medium">{agent.agent}</td>
               <td className="px-3 py-1.5">
                 {agent.shiftId ? (

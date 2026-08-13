@@ -4,7 +4,7 @@ import {
   ArrowUpRight,
   Gauge,
   PhoneCall,
-  ScaleIcon,
+  Scale as ScaleIcon,
   Timer,
   Users,
 } from "lucide-react";
