@@ -82,9 +82,7 @@ export function aggregateAgents(
     return {
       agent,
       shiftId: shift ? shift.id : null,
-      shiftName: shift
-        ? `${shift.name}${!manualShift ? " (auto)" : ""}`
-        : "Sin turno asignado",
+    shiftName: shift ? shift.name : "Sin turno asignado",
       sessions: agentRecords.length,
       calls: sum((r) => r.calls),
       conversationSeconds: sum((r) => r.conversationSeconds),
