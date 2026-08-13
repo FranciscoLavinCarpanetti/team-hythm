@@ -85,28 +85,30 @@ function Dashboard() {
 
   return (
     <div className="bg-surface text-foreground min-h-screen">
-      <header className="bg-primary text-primary-foreground sticky top-0 z-20">
-        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <span className="bg-primary-foreground/10 flex size-9 items-center justify-center rounded-sm">
+      <header className="bg-primary text-primary-foreground sticky top-0 z-20 shadow-card">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4 px-6 py-4">
+          <div className="flex items-center gap-3.5">
+            <span className="bg-primary-foreground/10 flex size-10 items-center justify-center rounded-sm">
               <BarChart3 className="size-5" />
             </span>
-            <div>
-              <p className="text-primary-foreground/60 text-[10px] font-semibold tracking-[0.14em] uppercase">
+            <div className="space-y-1">
+              <p className="text-primary-foreground/55 text-[10px] leading-none font-semibold tracking-[0.18em] uppercase">
                 Control interno · Workforce Management
               </p>
-              <h1 className="text-base leading-tight font-semibold">
+              <h1 className="text-[17px] leading-tight font-semibold tracking-tight">
                 Panel de ocupación de agentes
               </h1>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-primary-foreground/70 hidden text-right text-xs sm:block">
+          <div className="flex items-center gap-4">
+            <div className="text-primary-foreground/70 hidden text-right text-xs leading-relaxed sm:block">
               <p className="font-medium">
                 {hasData ? `${records.length} sesiones importadas` : "Sin datos importados"}
               </p>
               {importedAt && (
-                <p>Última carga: {importedAt.toLocaleTimeString("es-ES")}</p>
+                <p className="text-primary-foreground/55">
+                  Última carga: {importedAt.toLocaleTimeString("es-ES")}
+                </p>
               )}
             </div>
             {hasData && (
@@ -119,7 +121,7 @@ function Dashboard() {
         <div className="bg-secondary-brand h-1 w-full" />
       </header>
 
-      <main className="mx-auto max-w-[1600px] space-y-4 px-4 py-5">
+      <main className="mx-auto max-w-[1600px] space-y-5 px-6 py-6">
         <Tabs defaultValue="dashboard">
           <TabsList>
             <TabsTrigger value="dashboard">
@@ -130,7 +132,7 @@ function Dashboard() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="dashboard" className="space-y-4 pt-4">
+          <TabsContent value="dashboard" className="space-y-5 pt-5">
             {!hasData ? (
               <UploadPanel />
             ) : (
@@ -138,14 +140,17 @@ function Dashboard() {
                 <UploadPanel compact />
                 <KpiSummary kpis={kpis} />
 
-                <section className="border-border bg-card shadow-card space-y-3 rounded-md border p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <h2 className="text-sm font-semibold">Detalle por agente</h2>
+                <section className="border-border bg-card shadow-card space-y-4 rounded-md border p-4">
+                  <div className="flex flex-wrap items-end justify-between gap-3">
+                    <div className="space-y-1">
+                      <h2 className="text-[13px] font-semibold tracking-wide uppercase">
+                        Detalle por agente
+                      </h2>
                       <p className="text-muted-foreground text-xs">
                         {visibleAgents.length} agentes visibles
                       </p>
                     </div>
+
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="relative min-w-[200px]">
                         <Search className="text-muted-foreground absolute top-1/2 left-2 size-4 -translate-y-1/2" />

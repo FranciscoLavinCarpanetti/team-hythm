@@ -28,13 +28,15 @@ function Kpi({
   accent?: "low" | "balanced" | "high";
 }) {
   return (
-    <div className="border-border bg-card shadow-card flex items-start justify-between gap-2 rounded-md border p-3">
-      <div className="min-w-0">
-        <p className="text-muted-foreground truncate text-[11px] font-medium tracking-wide uppercase">
+    <div className="border-border bg-card shadow-card flex items-start justify-between gap-3 rounded-md border p-3.5">
+      <div className="min-w-0 space-y-1.5">
+        <p className="text-muted-foreground truncate text-[10px] leading-none font-semibold tracking-[0.12em] uppercase">
           {label}
         </p>
-        <p className="mt-1 font-mono text-xl leading-none font-semibold tabular-nums">{value}</p>
-        {hint && <p className="text-muted-foreground mt-1 text-[11px] leading-tight">{hint}</p>}
+        <p className="font-mono text-[22px] leading-none font-semibold tracking-tight tabular-nums">
+          {value}
+        </p>
+        {hint && <p className="text-muted-foreground text-[11px] leading-tight">{hint}</p>}
       </div>
       <span
         className={cn(
@@ -50,10 +52,12 @@ function Kpi({
   );
 }
 
+
 export function KpiSummary({ kpis }: { kpis: Kpis }) {
   return (
-    <section aria-label="Indicadores clave" className="space-y-2">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+    <section aria-label="Indicadores clave" className="space-y-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+
         <Kpi label="Agentes" value={String(kpis.agents)} icon={Users} />
         <Kpi label="Sesiones" value={String(kpis.sessions)} icon={Activity} />
         <Kpi label="Llamadas" value={kpis.calls.toLocaleString("es-ES")} icon={PhoneCall} />
@@ -73,7 +77,7 @@ export function KpiSummary({ kpis }: { kpis: Kpis }) {
           icon={Gauge}
         />
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-3">
         <Kpi label="Carga baja" value={String(kpis.low)} icon={ArrowDownRight} accent="low" />
         <Kpi
           label="Carga equilibrada"
