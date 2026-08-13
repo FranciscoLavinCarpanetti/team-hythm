@@ -72,7 +72,7 @@ export function AgentTable({
                 key={column.key}
                 scope="col"
                 className={cn(
-                  "border-primary/60 border-b px-3 py-2.5 text-[11px] font-semibold tracking-wide uppercase",
+                  "border-primary/60 border-b px-3.5 py-3 text-[10px] font-semibold tracking-[0.1em] uppercase",
                   column.numeric ? "text-right" : "text-left",
                 )}
               >
@@ -108,37 +108,37 @@ export function AgentTable({
               className="border-border/60 odd:bg-surface/60 hover:bg-accent/40 focus-visible:bg-accent/40 cursor-pointer border-b transition-colors last:border-0"
             >
 
-              <td className="px-3 py-1.5 font-medium">{agent.agent}</td>
-              <td className="px-3 py-1.5">
+              <td className="px-3.5 py-2 font-medium">{agent.agent}</td>
+              <td className="px-3.5 py-2">
                 {agent.shiftId ? (
                   agent.shiftName
                 ) : (
                   <span className="text-muted-foreground italic">Sin turno asignado</span>
                 )}
               </td>
-              <td className="px-3 py-1.5 text-right font-mono tabular-nums">{agent.sessions}</td>
-              <td className="px-3 py-1.5 text-right font-mono font-semibold tabular-nums">
+              <td className="px-3.5 py-2 text-right font-mono tabular-nums">{agent.sessions}</td>
+              <td className="px-3.5 py-2 text-right font-mono font-semibold tabular-nums">
                 {agent.calls.toLocaleString("es-ES")}
               </td>
-              <td className="px-3 py-1.5 text-right font-mono tabular-nums">
+              <td className="px-3.5 py-2 text-right font-mono tabular-nums">
                 {formatSeconds(agent.conversationSeconds)}
               </td>
-              <td className="px-3 py-1.5 text-right font-mono tabular-nums">
+              <td className="px-3.5 py-2 text-right font-mono tabular-nums">
                 {formatSeconds(agent.acwSeconds)}
               </td>
-              <td className="px-3 py-1.5 text-right font-mono tabular-nums">
+              <td className="px-3.5 py-2 text-right font-mono tabular-nums">
                 {formatSeconds(agent.productiveSeconds)}
               </td>
               <td
-                className="px-3 py-1.5 text-right font-mono font-semibold tabular-nums"
+                className="px-3.5 py-2 text-right font-mono font-semibold tabular-nums"
                 title={`Jornada activa esperada: ${formatSeconds(agent.expectedActiveSeconds)} (${agent.workedDays} día(s) × 7:30)`}
               >
                 {formatSeconds(agent.idleSeconds)}
               </td>
-              <td className="px-3 py-1.5">
+              <td className="px-3.5 py-2">
                 <OccupancyCell occupancy={agent.occupancy} category={agent.category} />
               </td>
-              <td className="px-3 py-1.5">
+              <td className="px-3.5 py-2">
                 <CategoryBadge category={agent.category} />
               </td>
             </tr>
