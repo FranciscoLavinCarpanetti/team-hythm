@@ -46,7 +46,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Dashboard() {
-  const { records, dates, categories, shifts, assignments, clearData, importedAt } = useWfm();
+  const { records, dates, categories, shifts, clearData, importedAt } = useWfm();
   const [search, setSearch] = useState("");
   const [shiftFilter, setShiftFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
@@ -64,8 +64,8 @@ function Dashboard() {
   );
 
   const allAgents = useMemo(
-    () => aggregateAgents(filteredRecords, assignments, shifts, categories),
-    [filteredRecords, assignments, shifts, categories],
+    () => aggregateAgents(filteredRecords, shifts, categories),
+    [filteredRecords, shifts, categories],
   );
 
   const visibleAgents = useMemo(() => {
@@ -81,11 +81,6 @@ function Dashboard() {
   }, [allAgents, search, shiftFilter, sort]);
 
   const kpis = useMemo(() => computeKpis(visibleAgents), [visibleAgents]);
-  const agentNames = useMemo(
-    () => Array.from(new Set(records.map((r) => r.agent))).sort((a, b) => a.localeCompare(b, "es")),
-    [records],
-  );
-
   const hasData = records.length > 0;
 
   return (
@@ -191,7 +186,7 @@ function Dashboard() {
           </TabsContent>
 
           <TabsContent value="config" className="pt-4">
-            <ConfigPanel agentNames={agentNames} />
+            <ConfigPanel />
           </TabsContent>
         </Tabs>
       </main>

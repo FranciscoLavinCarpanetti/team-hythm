@@ -29,21 +29,80 @@ export function isWithinShift(minutes: number, shift: Shift): boolean {
   return start < end ? minutes >= start && minutes < end : minutes >= start || minutes < end;
 }
 
-/** Shift matching a session, derived from its start time (fallback: end time). */
-export function shiftForSession(record: SessionRecord, shifts: Shift[]): Shift | null {
-  const ref = record.start ?? record.end;
-  if (!ref) return null;
-  const minutes = ref.getHours() * 60 + ref.getMinutes();
-  return shifts.find((s) => isWithinShift(minutes, s)) ?? null;
+function shiftOverlapSeconds(record: SessionRecord, shift: Shift): number {
+  if (!record.start || !record.end || record.end <= record.start) return 0;
+
+  const shiftStartMinutes = toMinutes(shift.start);
+  const shiftEndMinutes = toMinutes(shift.end);
+  const crossesMidnight = shiftEndMinutes <= shiftStartMinutes;
+  const firstDay = new Date(
+    record.start.getFullYear(),
+    record.start.getMonth(),
+    record.start.getDate() - 1,
+  );
+  const lastDay = new Date(
+    record.end.getFullYear(),
+    record.end.getMonth(),
+    record.end.getDate(),
+  );
+
+  let overlapMs = 0;
+  for (const day = new Date(firstDay); day <= lastDay; day.setDate(day.getDate() + 1)) {
+    const windowStart = new Date(
+      day.getFullYear(),
+      day.getMonth(),
+      day.getDate(),
+      Math.floor(shiftStartMinutes / 60),
+      shiftStartMinutes % 60,
+    );
+    const windowEnd = new Date(
+      day.getFullYear(),
+      day.getMonth(),
+      day.getDate() + (crossesMidnight ? 1 : 0),
+      Math.floor(shiftEndMinutes / 60),
+      shiftEndMinutes % 60,
+    );
+    overlapMs += Math.max(
+      0,
+      Math.min(record.end.getTime(), windowEnd.getTime()) -
+        Math.max(record.start.getTime(), windowStart.getTime()),
+    );
+  }
+
+  return overlapMs / 1000;
 }
 
-/** Dominant shift for an agent: the one covering most session time. */
+/** Shift matching the greatest part of the complete session interval. */
+export function shiftForSession(record: SessionRecord, shifts: Shift[]): Shift | null {
+  let best: { shift: Shift; overlap: number } | null = null;
+  for (const shift of shifts) {
+    const overlap = shiftOverlapSeconds(record, shift);
+    if (!best || overlap > best.overlap) best = { shift, overlap };
+  }
+  if (best && best.overlap > 0) return best.shift;
+
+  const reference = record.start ?? record.end;
+  if (!reference) return null;
+  const minutes = reference.getHours() * 60 + reference.getMinutes();
+  return shifts.find((shift) => isWithinShift(minutes, shift)) ?? null;
+}
+
+/** Dominant configured shift for an agent, based on actual session overlap. */
 export function detectShift(records: SessionRecord[], shifts: Shift[]): Shift | null {
   const weight = new Map<string, number>();
   for (const record of records) {
-    const shift = shiftForSession(record, shifts);
-    if (!shift) continue;
-    weight.set(shift.id, (weight.get(shift.id) ?? 0) + (record.sessionSeconds || 1));
+    let matchedOverlap = 0;
+    for (const shift of shifts) {
+      const overlap = shiftOverlapSeconds(record, shift);
+      if (overlap > 0) {
+        weight.set(shift.id, (weight.get(shift.id) ?? 0) + overlap);
+        matchedOverlap += overlap;
+      }
+    }
+    if (matchedOverlap === 0) {
+      const shift = shiftForSession(record, shifts);
+      if (shift) weight.set(shift.id, (weight.get(shift.id) ?? 0) + (record.sessionSeconds || 1));
+    }
   }
   let best: { id: string; value: number } | null = null;
   weight.forEach((value, id) => {
@@ -55,7 +114,6 @@ export function detectShift(records: SessionRecord[], shifts: Shift[]): Shift | 
 
 export function aggregateAgents(
   records: SessionRecord[],
-  assignments: Record<string, string | null>,
   shifts: Shift[],
   categories: LoadCategory[],
 ): AgentMetrics[] {
@@ -73,16 +131,12 @@ export function aggregateAgents(
     const productiveSeconds = sum((r) => r.productiveSeconds);
     const sessionSeconds = sum((r) => r.sessionSeconds);
     const occupancy = computeOccupancy(productiveSeconds, sessionSeconds);
-    // Shift is derived from the session start/end times; a manual assignment overrides it.
-    const manualId = assignments[agent] ?? null;
-    const manualShift = manualId ? (shifts.find((s) => s.id === manualId) ?? null) : null;
-    const detected = detectShift(agentRecords, shifts);
-    const shift = manualShift ?? detected;
+    const shift = detectShift(agentRecords, shifts);
 
     return {
       agent,
       shiftId: shift ? shift.id : null,
-    shiftName: shift ? shift.name : "Sin turno asignado",
+      shiftName: shift ? shift.name : "Sin turno asignado",
       sessions: agentRecords.length,
       calls: sum((r) => r.calls),
       conversationSeconds: sum((r) => r.conversationSeconds),
