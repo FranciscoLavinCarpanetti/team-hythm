@@ -92,7 +92,7 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
   try {
     const buffer = await file.arrayBuffer();
     const wb = XLSX.read(buffer, { cellDates: true });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const sheet = wb.Sheets[wb.SheetNames[0] ?? ""];
     if (!sheet) throw new Error("empty");
     rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "", raw: true });
     const headerMatrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, range: 0 });
