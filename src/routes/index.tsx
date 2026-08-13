@@ -84,29 +84,42 @@ function Dashboard() {
   const hasData = records.length > 0;
 
   return (
-    <div className="bg-background text-foreground min-h-screen">
-      <header className="border-border bg-card sticky top-0 z-10 border-b">
+    <div className="bg-surface text-foreground min-h-screen">
+      <header className="bg-primary text-primary-foreground sticky top-0 z-20">
         <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="text-primary size-5" />
+          <div className="flex items-center gap-3">
+            <span className="bg-primary-foreground/10 flex size-9 items-center justify-center rounded-sm">
+              <BarChart3 className="size-5" />
+            </span>
             <div>
-              <h1 className="text-sm font-semibold">WFM · Ocupación de agentes</h1>
-              <p className="text-muted-foreground text-xs">
-                {hasData
-                  ? `${records.length} sesiones importadas${importedAt ? ` · ${importedAt.toLocaleTimeString("es-ES")}` : ""}`
-                  : "Sin datos importados"}
+              <p className="text-primary-foreground/60 text-[10px] font-semibold tracking-[0.14em] uppercase">
+                Control interno · Workforce Management
               </p>
+              <h1 className="text-base leading-tight font-semibold">
+                Panel de ocupación de agentes
+              </h1>
             </div>
           </div>
-          {hasData && (
-            <Button variant="outline" size="sm" onClick={clearData}>
-              <Trash2 className="size-4" /> Vaciar datos
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            <div className="text-primary-foreground/70 hidden text-right text-xs sm:block">
+              <p className="font-medium">
+                {hasData ? `${records.length} sesiones importadas` : "Sin datos importados"}
+              </p>
+              {importedAt && (
+                <p>Última carga: {importedAt.toLocaleTimeString("es-ES")}</p>
+              )}
+            </div>
+            {hasData && (
+              <Button variant="secondary" size="sm" onClick={clearData}>
+                <Trash2 className="size-4" /> Vaciar datos
+              </Button>
+            )}
+          </div>
         </div>
+        <div className="bg-secondary-brand h-1 w-full" />
       </header>
 
-      <main className="mx-auto max-w-[1600px] space-y-4 px-4 py-4">
+      <main className="mx-auto max-w-[1600px] space-y-4 px-4 py-5">
         <Tabs defaultValue="dashboard">
           <TabsList>
             <TabsTrigger value="dashboard">
@@ -124,6 +137,7 @@ function Dashboard() {
               <>
                 <UploadPanel compact />
                 <KpiSummary kpis={kpis} />
+
 
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="relative min-w-[220px] flex-1">
