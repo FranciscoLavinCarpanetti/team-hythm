@@ -47,8 +47,9 @@ function Cell({
         </p>
         <p className="mt-1 font-mono text-[17px] leading-none font-semibold tabular-nums">{value}</p>
         {hint && (
-          <p className="text-muted-foreground mt-1 truncate text-[10px] leading-tight">{hint}</p>
+          <p className="text-muted-foreground mt-1 text-[10px] leading-tight">{hint}</p>
         )}
+
       </div>
     </div>
   );
@@ -69,13 +70,13 @@ export function KpiSummary({ kpis }: { kpis: Kpis }) {
       <Cell
         label="Ocupación operativa"
         value={pct(kpis.avgOccupancy)}
-        hint="T. productivo / T. sesión"
+        hint="Productivo / sesión"
         icon={Gauge}
       />
       <Cell
         label="T. Inactivo"
         value={formatSeconds(kpis.idleSeconds)}
-        hint={`Esperado: ${formatSeconds(kpis.expectedActiveSeconds)}`}
+        hint={`Esp. ${formatSeconds(kpis.expectedActiveSeconds)}`}
         icon={TimerOff}
       />
       <Cell label="Carga baja" value={String(kpis.low)} icon={ArrowDownRight} accent="low" />
