@@ -42,7 +42,7 @@ function Cell({
         <Icon className="size-3.5" />
       </span>
       <div className="min-w-0">
-        <p className="text-muted-foreground truncate text-[10px] leading-none font-semibold tracking-[0.1em] uppercase">
+        <p className="text-muted-foreground text-[10px] leading-tight font-semibold tracking-[0.08em] uppercase">
           {label}
         </p>
         <p className="mt-1 font-mono text-[17px] leading-none font-semibold tabular-nums">{value}</p>
