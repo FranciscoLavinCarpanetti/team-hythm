@@ -105,6 +105,10 @@ export type Benchmark = {
   agentOccupancy: number | null;
   referenceOccupancy: number | null;
   referenceLabel: string;
+  referenceKind: "shift" | "team";
+  referenceShiftId: string | null;
+  referenceShiftName: string | null;
+  fallbackReason: string | null;
   teamOccupancy: number | null;
   deviation: number | null;
   status: "above" | "below" | "within" | "unknown";
@@ -129,12 +133,29 @@ export function buildBenchmark(
   const useShift = Boolean(shift && shift.agents > 1 && shift.occupancy !== null);
   const referenceOccupancy = useShift ? shift!.occupancy : teamOccupancy;
   const referenceLabel = useShift ? `Referencia turno ${shift!.shiftName}` : "Referencia equipo";
+  const fallbackReason = useShift
+    ? null
+    : agent.shiftId === null
+      ? "El agente no encaja en ningún turno configurado; se usa la ocupación del equipo."
+      : shift && shift.occupancy === null
+        ? `El turno ${shift.shiftName} no tiene tiempo de sesión suficiente; se usa la ocupación del equipo.`
+        : shift
+          ? `El turno ${shift.shiftName} solo tiene 1 agente; se usa la ocupación del equipo.`
+          : "No hay datos del turno del agente; se usa la ocupación del equipo.";
+
+  const base = {
+    referenceKind: (useShift ? "shift" : "team") as "shift" | "team",
+    referenceShiftId: useShift ? shift!.shiftId : null,
+    referenceShiftName: useShift ? shift!.shiftName : null,
+    fallbackReason,
+  };
 
   if (agent.occupancy === null || referenceOccupancy === null) {
     return {
       agentOccupancy: agent.occupancy,
       referenceOccupancy,
       referenceLabel,
+      ...base,
       teamOccupancy,
       deviation: null,
       status: "unknown",
@@ -156,6 +177,7 @@ export function buildBenchmark(
     agentOccupancy: agent.occupancy,
     referenceOccupancy,
     referenceLabel,
+    ...base,
     teamOccupancy,
     deviation,
     status,

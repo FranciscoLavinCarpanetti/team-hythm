@@ -118,13 +118,19 @@ function Dashboard() {
     () => aggregateByShift(visibleAgents, shifts, categories),
     [visibleAgents, shifts, categories],
   );
+  // El benchmark usa la misma población que su referencia de equipo (todos los agentes),
+  // para que «Referencia» y «Equipo» sean comparables entre sí.
+  const shiftMetricsAll = useMemo(
+    () => aggregateByShift(allAgents, shifts, categories),
+    [allAgents, shifts, categories],
+  );
   const alerts = useMemo(
     () => deriveAlerts(visibleAgents, distribution, kpis, quality),
     [visibleAgents, distribution, kpis, quality],
   );
   const benchmark = useMemo(
-    () => (selected ? buildBenchmark(selected, allAgents, shiftMetrics) : null),
-    [selected, allAgents, shiftMetrics],
+    () => (selected ? buildBenchmark(selected, allAgents, shiftMetricsAll) : null),
+    [selected, allAgents, shiftMetricsAll],
   );
 
   const hasData = records.length > 0;
