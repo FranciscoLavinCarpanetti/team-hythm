@@ -222,6 +222,7 @@ export function computeKpis(agents: AgentMetrics[]): Kpis {
     low: count("low"),
     balanced: count("balanced"),
     high: count("high"),
+    withoutShift: agents.filter((a) => a.shiftId === null).length,
   };
 }
 
