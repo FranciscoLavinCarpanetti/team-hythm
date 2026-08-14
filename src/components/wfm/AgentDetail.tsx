@@ -101,6 +101,31 @@ export function AgentDetail({
               />
             </div>
 
+            {benchmark && <BenchmarkBlock benchmark={benchmark} />}
+
+            {agent.shiftBreakdown.length > 1 && (
+              <section className="border-border rounded-md border p-3">
+                <h3 className="text-[11px] font-semibold tracking-[0.1em] uppercase">
+                  Reparto por turno (días operativos)
+                </h3>
+                <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+                  {agent.shiftBreakdown.map((item) => (
+                    <li
+                      key={item.shiftId ?? "none"}
+                      className="border-border/70 flex items-center justify-between gap-2 rounded-sm border px-2 py-1 text-xs"
+                    >
+                      <span>{item.shiftName}</span>
+                      <span className="font-mono tabular-nums">
+                        {item.days} día(s) · {item.percentage.toFixed(2).replace(".", ",")}%
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+
+
             <div className="border-border overflow-x-auto rounded-md border">
               <table className="w-full min-w-[880px] text-xs">
                 <thead className="bg-secondary text-secondary-foreground">
