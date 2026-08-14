@@ -32,7 +32,7 @@ function InfoTooltip({ text, label }: { text: string; label: string }) {
           onTouchStart={() => setOpen(true)}
           onPointerDown={() => setOpen(true)}
         >
-          <Info className="size-3.5" aria-hidden="true" />
+          <Info className="size-3.5 pointer-events-none" aria-hidden="true" />
         </button>
       </TooltipTrigger>
       <TooltipContent side="top" align="start" className="max-w-[240px]">
