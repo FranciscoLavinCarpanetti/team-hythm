@@ -35,17 +35,17 @@ import type { AgentMetrics } from "@/lib/wfm/types";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "WFM Ocupación de Agentes | Panel Operativo" },
+      { title: "Ocupación de agentes | Análisis operativo" },
       {
         name: "description",
         content:
-          "Importa el Excel de sesiones y analiza ocupación, carga por turno, calidad de datos e histórico de importaciones por agente.",
+          "Importa el Excel de sesiones y revisa ocupación, carga por turno, calidad de datos e histórico de importaciones por agente.",
       },
-      { property: "og:title", content: "WFM Ocupación de Agentes" },
+      { property: "og:title", content: "Ocupación de agentes" },
       {
         property: "og:description",
         content:
-          "Centro de control operativo de Workforce Management: métricas agregadas por agente y turno a partir del Excel de sesiones.",
+          "Análisis operativo de ocupación de agentes: métricas agregadas por agente y turno a partir del Excel de sesiones.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -139,10 +139,10 @@ function Dashboard() {
             </span>
             <div className="space-y-1">
               <p className="text-primary-foreground/55 text-[10px] leading-none font-semibold tracking-[0.18em] uppercase">
-                Control interno · Workforce Management
+                Análisis operativo
               </p>
               <h1 className="text-[17px] leading-tight font-semibold tracking-tight">
-                Centro de control de ocupación de agentes
+                Ocupación de agentes
               </h1>
             </div>
           </div>
