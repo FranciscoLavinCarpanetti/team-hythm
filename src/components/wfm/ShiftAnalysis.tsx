@@ -9,7 +9,7 @@ function shiftIcon(shift: ShiftMetrics) {
     return {
       Icon: Moon,
       label: "Turno nocturno",
-      className: "text-muted-foreground",
+      className: "text-primary",
     };
   }
   const startHour = shift.schedule ? Number(shift.schedule.split(":")[0]) : null;
@@ -17,15 +17,16 @@ function shiftIcon(shift: ShiftMetrics) {
     return {
       Icon: Sunrise,
       label: "Turno de mañana",
-      className: "text-secondary",
+      className: "text-secondary-brand",
     };
   }
   return {
     Icon: Sunset,
     label: "Turno de tarde",
-    className: "text-secondary",
+    className: "text-secondary-brand",
   };
 }
+
 
 
 export function ShiftAnalysis({ shifts }: { shifts: ShiftMetrics[] }) {
@@ -80,7 +81,9 @@ export function ShiftAnalysis({ shifts }: { shifts: ShiftMetrics[] }) {
                       const { Icon, label, className } = shiftIcon(shift);
                       return (
                         <Icon
-                          className={cn("size-3.5", className)}
+                          className={cn("size-[18px] shrink-0", className)}
+                          strokeWidth={2.25}
+
                           aria-label={label}
                         />
                       );
