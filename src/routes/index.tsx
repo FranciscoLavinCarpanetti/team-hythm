@@ -1,6 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { BarChart3, History, Search, Settings2, Trash2, Users } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import {
+  BarChart3,
+  History,
+  ImageDown,
+  Search,
+  Settings2,
+  Trash2,
+  Users,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { exportNodeAsPng } from "@/lib/wfm/export-image";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -135,6 +146,30 @@ function Dashboard() {
 
   const hasData = records.length > 0;
 
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
+
+  const dateRangeLabel = useMemo(() => {
+    if (effectiveDate !== "all") return formatDateKey(effectiveDate);
+    if (dates.length === 0) return "Sin fechas";
+    if (dates.length === 1) return formatDateKey(dates[0]!);
+    return `${formatDateKey(dates[0]!)} – ${formatDateKey(dates[dates.length - 1]!)}`;
+  }, [dates, effectiveDate]);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const node = reportRef.current;
+      if (node) {
+        await exportNodeAsPng(node, `informe-ocupacion-${effectiveDate === "all" ? "global" : effectiveDate}.png`);
+      }
+    } finally {
+      setExporting(false);
+    }
+  };
+
+
   return (
     <div className="bg-surface text-foreground min-h-screen">
       <header className="bg-primary text-primary-foreground shadow-card sticky top-0 z-20">
@@ -212,12 +247,51 @@ function Dashboard() {
             ) : (
               <>
                 <UploadPanel compact />
-                <KpiSummary kpis={kpis} />
-                <div className="grid gap-4 lg:grid-cols-2">
-                  <LoadDistribution slices={distribution} total={visibleAgents.length} />
-                  <OperationalAlerts alerts={alerts} />
+
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-muted-foreground text-xs">
+                    El informe exportado incluye indicadores, distribución de carga y análisis por
+                    turno.
+                  </p>
+                  <Button size="sm" onClick={handleExport} disabled={exporting}>
+                    <ImageDown className="size-4" />
+                    {exporting ? "Generando imagen…" : "Exportar informe (PNG)"}
+                  </Button>
                 </div>
-                <ShiftAnalysis shifts={shiftMetrics} />
+
+                <div className="overflow-x-auto">
+                  <div
+                    ref={reportRef}
+                    className={cn(
+                      "bg-surface space-y-5",
+                      exporting ? "w-[1400px] p-6" : "w-full",
+                    )}
+                  >
+                    <div className="border-border bg-card shadow-card flex flex-wrap items-end justify-between gap-3 rounded-md border p-4">
+                      <div className="space-y-1">
+                        <p className="text-muted-foreground text-[10px] font-semibold tracking-[0.18em] uppercase">
+                          Informe operativo
+                        </p>
+                        <h2 className="text-lg leading-tight font-semibold">
+                          Ocupación de agentes
+                        </h2>
+                        <p className="text-muted-foreground text-xs">
+                          {dateRangeLabel} · {kpis.agents} agentes · {kpis.sessions} sesiones
+                        </p>
+                      </div>
+                      <div className="text-muted-foreground space-y-1 text-right text-xs">
+                        {activeMeta && <p>Origen: {activeMeta.fileName}</p>}
+                        <p>Generado: {new Date().toLocaleString("es-ES")}</p>
+                      </div>
+                    </div>
+
+                    <KpiSummary kpis={kpis} />
+                    <LoadDistribution slices={distribution} total={visibleAgents.length} />
+                    <ShiftAnalysis shifts={shiftMetrics} />
+                  </div>
+                </div>
+
+                <OperationalAlerts alerts={alerts} />
                 {quality && (
                   <DataQualityPanel
                     quality={quality}
@@ -228,6 +302,7 @@ function Dashboard() {
               </>
             )}
           </TabsContent>
+
 
           <TabsContent value="agentes" className="space-y-5 pt-5">
             {!hasData ? (
