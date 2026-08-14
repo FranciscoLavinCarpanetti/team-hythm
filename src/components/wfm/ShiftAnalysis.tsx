@@ -81,7 +81,9 @@ export function ShiftAnalysis({ shifts }: { shifts: ShiftMetrics[] }) {
                       const { Icon, label, className } = shiftIcon(shift);
                       return (
                         <Icon
-                          className={cn("size-3.5", className)}
+                          className={cn("size-[18px] shrink-0", className)}
+                          strokeWidth={2.25}
+
                           aria-label={label}
                         />
                       );
