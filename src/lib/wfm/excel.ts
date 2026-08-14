@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import type { ParseResult, ParseWarning, SessionRecord } from "./types";
+import type { DataQuality, ParseIssue, ParseResult, SessionRecord } from "./types";
 import { parseDateValue, parseDurationToSeconds, parseNumber, toDateKey } from "./time";
 
 export class ExcelValidationError extends Error {
@@ -113,8 +113,9 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
     throw new ExcelValidationError("El Excel no contiene filas de sesiones.");
   }
 
-  const warnings: ParseWarning[] = [];
+  const issues: ParseIssue[] = [];
   const records: SessionRecord[] = [];
+  /** Deterministic composite key over available session-level fields. */
   const seen = new Set<string>();
   let duplicatesRemoved = 0;
 
@@ -123,13 +124,28 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
     const agent = String(row[col("agent")] ?? "").trim();
     const sessionId = String(row[col("sessionId")] ?? "").trim();
     if (!agent || !sessionId) {
-      warnings.push({ row: rowNumber, message: "Fila ignorada: falta agente o id de sesión." });
+      issues.push({
+        row: rowNumber,
+        sessionId: sessionId || null,
+        agent: agent || null,
+        kind: "missing-key",
+        severity: "error",
+        message: "Fila descartada: falta el agente o el identificador de sesión.",
+      });
       return;
     }
 
     const key = `${sessionId}|${agent}`;
     if (seen.has(key)) {
       duplicatesRemoved += 1;
+      issues.push({
+        row: rowNumber,
+        sessionId,
+        agent,
+        kind: "duplicate",
+        severity: "warning",
+        message: "Duplicado detectado (misma sesión y agente): excluido del agregado.",
+      });
       return;
     }
 
@@ -141,23 +157,63 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
     };
     const invalidDuration = Object.entries(durations).find(([, v]) => v === null);
     if (invalidDuration) {
-      warnings.push({
+      issues.push({
         row: rowNumber,
-        message: `Fila ignorada: valor de duración no válido (${sessionId}).`,
+        sessionId,
+        agent,
+        kind: "invalid-duration",
+        severity: "error",
+        message: `Fila descartada: valor de duración no válido en ${invalidDuration[0]}.`,
       });
       return;
     }
 
     const calls = parseNumber(row[col("calls")]);
     if (calls === null || calls < 0) {
-      warnings.push({ row: rowNumber, message: `Fila ignorada: nº de llamadas no válido.` });
+      issues.push({
+        row: rowNumber,
+        sessionId,
+        agent,
+        kind: "invalid-calls",
+        severity: "error",
+        message: "Fila descartada: número de llamadas no válido.",
+      });
       return;
     }
 
     const start = parseDateValue(row[col("start")]);
     const end = parseDateValue(row[col("end")]);
     if (!start && !end) {
-      warnings.push({ row: rowNumber, message: `Sesión ${sessionId} sin fechas válidas.` });
+      issues.push({
+        row: rowNumber,
+        sessionId,
+        agent,
+        kind: "invalid-dates",
+        severity: "warning",
+        message: "Sesión sin fechas válidas: no se puede asignar turno ni fecha operativa.",
+      });
+    }
+
+    if (calls === 0) {
+      issues.push({
+        row: rowNumber,
+        sessionId,
+        agent,
+        kind: "zero-calls",
+        severity: "warning",
+        message: "Sesión sin llamadas registradas.",
+      });
+    }
+
+    if (durations.productiveSeconds! > durations.sessionSeconds!) {
+      issues.push({
+        row: rowNumber,
+        sessionId,
+        agent,
+        kind: "productive-exceeds-session",
+        severity: "warning",
+        message: "Anomalía: el tiempo productivo supera el tiempo de sesión.",
+      });
     }
 
     const reference = start ?? end;
@@ -180,7 +236,7 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
   if (!records.length) {
     throw new ExcelValidationError(
       "No se ha podido importar ninguna sesión válida del archivo.",
-      warnings.slice(0, 5).map((w) => `Fila ${w.row}: ${w.message}`),
+      issues.slice(0, 5).map((w) => `Fila ${w.row}: ${w.message}`),
     );
   }
 
@@ -188,5 +244,15 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
     new Set(records.map((r) => r.operationalDate).filter((d): d is string => Boolean(d))),
   ).sort();
 
-  return { records, warnings, duplicatesRemoved, dates };
+  const quality: DataQuality = {
+    totalRows: rows.length,
+    validRows: records.length,
+    invalidRows: issues.filter((i) => i.severity === "error").length,
+    duplicateRows: duplicatesRemoved,
+    agents: new Set(records.map((r) => r.agent)).size,
+    zeroCallSessions: issues.filter((i) => i.kind === "zero-calls").length,
+    anomalousSessions: issues.filter((i) => i.kind === "productive-exceeds-session").length,
+  };
+
+  return { records, issues, duplicatesRemoved, dates, quality, fileName: file.name };
 }

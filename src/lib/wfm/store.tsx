@@ -7,7 +7,17 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { LoadCategory, ParseResult, SessionRecord, Shift } from "./types";
+import type {
+  DataQuality,
+  ImportMeta,
+  ImportSnapshot,
+  LoadCategory,
+  ParseIssue,
+  ParseResult,
+  SessionRecord,
+  Shift,
+} from "./types";
+import * as history from "./history";
 
 const STORAGE_KEY = "wfm-config-v1";
 
@@ -33,11 +43,22 @@ type WfmContextValue = Config & {
   records: SessionRecord[];
   dates: string[];
   importedAt: Date | null;
+  issues: ParseIssue[];
+  quality: DataQuality | null;
+  activeMeta: ImportMeta | null;
+  latestImportId: string | null;
+  viewingHistorical: boolean;
+  historyList: ImportMeta[];
   setShifts: (shifts: Shift[]) => void;
   setCategories: (categories: LoadCategory[]) => void;
   assignShift: (agent: string, shiftId: string | null) => void;
   applyImport: (result: ParseResult) => void;
   clearData: () => void;
+  viewImport: (id: string) => boolean;
+  backToLatest: () => void;
+  removeImport: (id: string) => void;
+  clearHistory: () => void;
+  loadSnapshot: (id: string) => ImportSnapshot | null;
 };
 
 const WfmContext = createContext<WfmContextValue | null>(null);
@@ -72,10 +93,16 @@ export function WfmProvider({ children }: { children: ReactNode }) {
   const [records, setRecords] = useState<SessionRecord[]>([]);
   const [dates, setDates] = useState<string[]>([]);
   const [importedAt, setImportedAt] = useState<Date | null>(null);
+  const [issues, setIssues] = useState<ParseIssue[]>([]);
+  const [quality, setQuality] = useState<DataQuality | null>(null);
+  const [activeMeta, setActiveMeta] = useState<ImportMeta | null>(null);
+  const [latestImportId, setLatestImportId] = useState<string | null>(null);
+  const [historyList, setHistoryList] = useState<ImportMeta[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     setConfig(loadConfig());
+    setHistoryList(history.listHistory());
     setHydrated(true);
   }, []);
 
@@ -84,12 +111,33 @@ export function WfmProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
   }, [config, hydrated]);
 
-  const applyImport = useCallback((result: ParseResult) => {
-    // Replace dataset only; agent shift assignments and config are preserved.
-    setRecords(result.records);
-    setDates(result.dates);
-    setImportedAt(new Date());
+  const applySnapshot = useCallback((snapshot: ImportSnapshot) => {
+    setRecords(snapshot.records);
+    setDates(snapshot.dates);
+    setIssues(snapshot.issues);
+    setQuality(snapshot.quality);
+    setActiveMeta(snapshot.meta);
+    setImportedAt(new Date(snapshot.meta.importedAt));
   }, []);
+
+  const applyImport = useCallback(
+    (result: ParseResult) => {
+      // Replace active dataset only; shifts and load categories are preserved.
+      const importedDate = new Date();
+      const id = `${importedDate.getTime()}-${Math.random().toString(36).slice(2, 8)}`;
+      const snapshot: ImportSnapshot = {
+        meta: history.buildMeta(result, id, importedDate),
+        records: result.records,
+        issues: result.issues,
+        quality: result.quality,
+        dates: result.dates,
+      };
+      applySnapshot(snapshot);
+      setLatestImportId(id);
+      setHistoryList(history.saveSnapshot(snapshot));
+    },
+    [applySnapshot],
+  );
 
   const value = useMemo<WfmContextValue>(
     () => ({
@@ -97,6 +145,12 @@ export function WfmProvider({ children }: { children: ReactNode }) {
       records,
       dates,
       importedAt,
+      issues,
+      quality,
+      activeMeta,
+      latestImportId,
+      viewingHistorical: Boolean(activeMeta && latestImportId && activeMeta.id !== latestImportId),
+      historyList,
       setShifts: (shifts) => setConfig((c) => ({ ...c, shifts })),
       setCategories: (categories) => setConfig((c) => ({ ...c, categories })),
       assignShift: (agent, shiftId) =>
@@ -106,9 +160,40 @@ export function WfmProvider({ children }: { children: ReactNode }) {
         setRecords([]);
         setDates([]);
         setImportedAt(null);
+        setIssues([]);
+        setQuality(null);
+        setActiveMeta(null);
+        setLatestImportId(null);
       },
+      viewImport: (id) => {
+        const snapshot = history.getSnapshot(id);
+        if (!snapshot || !snapshot.records.length) return false;
+        if (!latestImportId) setLatestImportId(activeMeta?.id ?? id);
+        applySnapshot(snapshot);
+        return true;
+      },
+      backToLatest: () => {
+        if (!latestImportId) return;
+        const snapshot = history.getSnapshot(latestImportId);
+        if (snapshot) applySnapshot(snapshot);
+      },
+      removeImport: (id) => setHistoryList(history.deleteSnapshot(id)),
+      clearHistory: () => setHistoryList(history.clearHistory()),
+      loadSnapshot: (id) => history.getSnapshot(id),
     }),
-    [config, records, dates, importedAt, applyImport],
+    [
+      config,
+      records,
+      dates,
+      importedAt,
+      issues,
+      quality,
+      activeMeta,
+      latestImportId,
+      historyList,
+      applyImport,
+      applySnapshot,
+    ],
   );
 
   return <WfmContext.Provider value={value}>{children}</WfmContext.Provider>;

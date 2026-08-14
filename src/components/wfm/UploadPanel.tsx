@@ -22,7 +22,9 @@ export function UploadPanel({ compact = false }: { compact?: boolean }) {
       applyImport(result);
       const extra: string[] = [];
       if (result.duplicatesRemoved) extra.push(`${result.duplicatesRemoved} duplicadas omitidas`);
-      if (result.warnings.length) extra.push(`${result.warnings.length} avisos`);
+      if (result.quality.invalidRows) extra.push(`${result.quality.invalidRows} filas no válidas`);
+      const warnings = result.issues.filter((i) => i.severity === "warning").length;
+      if (warnings) extra.push(`${warnings} avisos`);
       toast.success(`${result.records.length} sesiones importadas`, {
         description: extra.length ? extra.join(" · ") : "Configuración de turnos conservada",
       });

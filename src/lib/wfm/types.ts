@@ -13,13 +13,43 @@ export type SessionRecord = {
   productiveSeconds: number;
 };
 
-export type ParseWarning = { row: number; message: string };
+export type IssueKind =
+  | "missing-key"
+  | "invalid-duration"
+  | "invalid-calls"
+  | "invalid-dates"
+  | "duplicate"
+  | "zero-calls"
+  | "productive-exceeds-session";
+
+export type IssueSeverity = "error" | "warning";
+
+export type ParseIssue = {
+  row: number;
+  sessionId: string | null;
+  agent: string | null;
+  kind: IssueKind;
+  severity: IssueSeverity;
+  message: string;
+};
+
+export type DataQuality = {
+  totalRows: number;
+  validRows: number;
+  invalidRows: number;
+  duplicateRows: number;
+  agents: number;
+  zeroCallSessions: number;
+  anomalousSessions: number;
+};
 
 export type ParseResult = {
   records: SessionRecord[];
-  warnings: ParseWarning[];
+  issues: ParseIssue[];
   duplicatesRemoved: number;
   dates: string[];
+  quality: DataQuality;
+  fileName: string;
 };
 
 export type Shift = {
@@ -71,4 +101,28 @@ export type Kpis = {
   low: number;
   balanced: number;
   high: number;
+  withoutShift: number;
+};
+
+/** Metadata persisted for every import (history). */
+export type ImportMeta = {
+  id: string;
+  fileName: string;
+  importedAt: string; // ISO
+  rowCount: number;
+  validRows: number;
+  invalidRows: number;
+  duplicateRows: number;
+  agents: number;
+  dateFrom: string | null;
+  dateTo: string | null;
+  hasRecords: boolean;
+};
+
+export type ImportSnapshot = {
+  meta: ImportMeta;
+  records: SessionRecord[];
+  issues: ParseIssue[];
+  quality: DataQuality;
+  dates: string[];
 };
