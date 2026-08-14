@@ -1,8 +1,32 @@
-import { Moon } from "lucide-react";
+import { Moon, Sunrise, Sunset } from "lucide-react";
 import type { ShiftMetrics } from "@/lib/wfm/analysis";
 import { formatSeconds } from "@/lib/wfm/time";
 import { statusBarClass } from "./LoadDistribution";
 import { cn } from "@/lib/utils";
+
+function shiftIcon(shift: ShiftMetrics) {
+  if (shift.crossesMidnight) {
+    return {
+      Icon: Moon,
+      label: "Turno nocturno",
+      className: "text-muted-foreground",
+    };
+  }
+  const startHour = shift.schedule ? Number(shift.schedule.split(":")[0]) : null;
+  if (startHour !== null && startHour < 12) {
+    return {
+      Icon: Sunrise,
+      label: "Turno de mañana",
+      className: "text-secondary",
+    };
+  }
+  return {
+    Icon: Sunset,
+    label: "Turno de tarde",
+    className: "text-secondary",
+  };
+}
+
 
 export function ShiftAnalysis({ shifts }: { shifts: ShiftMetrics[] }) {
   return (
@@ -51,12 +75,16 @@ export function ShiftAnalysis({ shifts }: { shifts: ShiftMetrics[] }) {
                 <td className="px-2 py-2">
                   <span className="flex items-center gap-1.5 font-medium">
                     {shift.shiftName}
-                    {shift.crossesMidnight && (
-                      <Moon
-                        className="text-muted-foreground size-3.5"
-                        aria-label="Cruza medianoche"
-                      />
-                    )}
+                    {(() => {
+                      if (shift.shiftId === null) return null;
+                      const { Icon, label, className } = shiftIcon(shift);
+                      return (
+                        <Icon
+                          className={cn("size-3.5", className)}
+                          aria-label={label}
+                        />
+                      );
+                    })()}
                   </span>
                   {shift.schedule && (
                     <span className="text-muted-foreground font-mono text-[11px]">
