@@ -47,8 +47,9 @@ function Cell({
         </p>
         <p className="mt-1 font-mono text-[17px] leading-none font-semibold tabular-nums">{value}</p>
         {hint && (
-          <p className="text-muted-foreground mt-1 truncate text-[10px] leading-tight">{hint}</p>
+          <p className="text-muted-foreground mt-1 text-[10px] leading-tight">{hint}</p>
         )}
+
       </div>
     </div>
   );
