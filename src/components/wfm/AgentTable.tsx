@@ -65,12 +65,23 @@ export function AgentTable({
   return (
     <div className="border-border bg-card shadow-card overflow-x-auto rounded-md border">
       <table className="w-full min-w-[900px] border-collapse text-sm">
+        <caption className="sr-only">
+          Métricas agregadas por agente. Usa los encabezados para ordenar y pulsa Intro sobre una
+          fila para ver el detalle.
+        </caption>
         <thead className="sticky top-0 z-10">
           <tr className="bg-primary text-primary-foreground">
             {COLUMNS.map((column) => (
               <th
                 key={column.key}
                 scope="col"
+                aria-sort={
+                  sort.key === column.key
+                    ? sort.dir === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : "none"
+                }
                 className={cn(
                   "border-primary/60 border-b px-3.5 py-3 text-[10px] font-semibold tracking-[0.1em] uppercase",
                   column.numeric ? "text-right" : "text-left",
@@ -79,17 +90,18 @@ export function AgentTable({
                 <button
                   type="button"
                   onClick={() => toggle(column.key)}
+                  aria-label={`Ordenar por ${column.label}`}
                   className={cn(
-                    "inline-flex items-center gap-1 hover:underline",
+                    "focus-visible:ring-primary-foreground/70 inline-flex items-center gap-1 rounded-sm hover:underline focus-visible:ring-2 focus-visible:outline-none",
                     column.numeric && "flex-row-reverse",
                   )}
                 >
                   {column.label}
                   {sort.key === column.key &&
                     (sort.dir === "asc" ? (
-                      <ArrowUp className="size-3" />
+                      <ArrowUp className="size-3" aria-hidden="true" />
                     ) : (
-                      <ArrowDown className="size-3" />
+                      <ArrowDown className="size-3" aria-hidden="true" />
                     ))}
                 </button>
               </th>
@@ -101,12 +113,18 @@ export function AgentTable({
             <tr
               key={agent.agent}
               tabIndex={0}
+              role="button"
+              aria-label={`Ver detalle de ${agent.agent}`}
               onClick={() => onSelect(agent)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") onSelect(agent);
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(agent);
+                }
               }}
-              className="border-border/60 odd:bg-surface/60 hover:bg-accent/40 focus-visible:bg-accent/40 cursor-pointer border-b transition-colors last:border-0"
+              className="border-border/60 odd:bg-surface/60 hover:bg-accent/40 focus-visible:bg-accent/40 focus-visible:outline-primary cursor-pointer border-b transition-colors last:border-0 focus-visible:outline-2 focus-visible:-outline-offset-2"
             >
+
 
               <td className="px-3.5 py-2 font-medium">{agent.agent}</td>
               <td className="px-3.5 py-2">
