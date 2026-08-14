@@ -196,7 +196,7 @@ export function AgentDetail({
               />
             </div>
 
-            {benchmark && <BenchmarkBlock benchmark={benchmark} />}
+            {benchmark && <BenchmarkBlock benchmark={benchmark} agent={agent} />}
 
             {agent.shiftBreakdown.length > 1 && (
               <section className="border-border rounded-md border p-3">
