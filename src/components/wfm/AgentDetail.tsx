@@ -42,14 +42,24 @@ function InfoTooltip({ text, label }: { text: string; label: string }) {
   );
 }
 
-function Metric({ label, value, info }: { label: string; value: string; info?: string }) {
+function Metric({
+  label,
+  value,
+  info,
+  valueClassName,
+}: {
+  label: string;
+  value: string;
+  info?: string;
+  valueClassName?: string;
+}) {
   return (
     <div className="border-border rounded-md border p-2">
       <div className="flex items-start justify-between gap-1">
         <p className="text-muted-foreground text-[11px] tracking-wide uppercase">{label}</p>
         {info && <InfoTooltip text={info} label={label} />}
       </div>
-      <p className="mt-0.5 font-mono text-sm font-semibold tabular-nums">{value}</p>
+      <p className={cn("mt-0.5 font-mono text-sm font-semibold tabular-nums", valueClassName)}>{value}</p>
     </div>
   );
 }
@@ -82,30 +92,23 @@ function BenchmarkBlock({ benchmark }: { benchmark: Benchmark }) {
             value={pct(benchmark.teamOccupancy)}
             info="Ocupación agregada de todo el equipo evaluado, calculada como tiempo productivo total ÷ tiempo de sesión total de todos los agentes incluidos en el período."
           />
-          <div className="border-border rounded-md border p-2">
-            <div className="flex items-start justify-between gap-1">
-              <p className="text-muted-foreground text-[11px] tracking-wide uppercase">Desviación</p>
-              <InfoTooltip
-                label="Desviación"
-                text="Diferencia en puntos porcentuales entre la ocupación del agente y la ocupación de referencia. El color refleja la interpretación relativa: dentro del rango operativo, por encima o por debajo. No es un ranking ni una valoración de rendimiento individual."
-              />
-            </div>
-            <p
-              className={cn(
-                "mt-0.5 font-mono text-sm font-semibold tabular-nums",
-                benchmark.status === "above" && "text-status-high-foreground",
-                benchmark.status === "below" && "text-status-low-foreground",
-              )}
-            >
-              {benchmark.deviation === null
+          <Metric
+            label="Desviación"
+            value={
+              benchmark.deviation === null
                 ? "—"
                 : `${benchmark.deviation > 0 ? "+" : benchmark.deviation < 0 ? "−" : ""}${Math.abs(
                     benchmark.deviation,
                   )
                     .toFixed(1)
-                    .replace(".", ",")} p.p.`}
-            </p>
-          </div>
+                    .replace(".", ",")} p.p.`
+            }
+            valueClassName={cn(
+              benchmark.status === "above" && "text-status-high-foreground",
+              benchmark.status === "below" && "text-status-low-foreground",
+            )}
+            info="Diferencia en puntos porcentuales entre la ocupación del agente y la ocupación de referencia. El color refleja la interpretación relativa: dentro del rango operativo, por encima o por debajo. No es un ranking ni una valoración de rendimiento individual."
+          />
         </div>
         <p className="text-muted-foreground text-xs">
           {benchmark.label}. Comparación informativa, sin rankings ni clasificaciones de rendimiento.
