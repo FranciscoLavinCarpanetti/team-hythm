@@ -139,10 +139,10 @@ function Dashboard() {
             </span>
             <div className="space-y-1">
               <p className="text-primary-foreground/55 text-[10px] leading-none font-semibold tracking-[0.18em] uppercase">
-                Control interno · Workforce Management
+                Análisis operativo
               </p>
               <h1 className="text-[17px] leading-tight font-semibold tracking-tight">
-                Centro de control de ocupación de agentes
+                Ocupación de agentes
               </h1>
             </div>
           </div>
