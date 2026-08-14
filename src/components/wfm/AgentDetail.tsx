@@ -1,8 +1,10 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { AgentMetrics } from "@/lib/wfm/types";
+import type { Benchmark } from "@/lib/wfm/analysis";
 import { formatDateTime, formatSeconds } from "@/lib/wfm/time";
 import { computeOccupancy } from "@/lib/wfm/aggregate";
 import { CategoryBadge, OccupancyCell } from "./OccupancyCell";
+import { cn } from "@/lib/utils";
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
@@ -13,11 +15,54 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+const pct = (v: number | null) => (v === null ? "—" : `${v.toFixed(1).replace(".", ",")}%`);
+
+function BenchmarkBlock({ benchmark }: { benchmark: Benchmark }) {
+  return (
+    <section className="border-border bg-surface space-y-2 rounded-md border p-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-[11px] font-semibold tracking-[0.1em] uppercase">
+          Comparación relativa
+        </h3>
+        <p className="text-muted-foreground text-[11px]">{benchmark.referenceLabel}</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <Metric label="Agente" value={pct(benchmark.agentOccupancy)} />
+        <Metric label="Referencia" value={pct(benchmark.referenceOccupancy)} />
+        <Metric label="Equipo" value={pct(benchmark.teamOccupancy)} />
+        <div className="border-border rounded-md border p-2">
+          <p className="text-muted-foreground text-[11px] tracking-wide uppercase">Desviación</p>
+          <p
+            className={cn(
+              "mt-0.5 font-mono text-sm font-semibold tabular-nums",
+              benchmark.status === "above" && "text-status-high-foreground",
+              benchmark.status === "below" && "text-status-low-foreground",
+            )}
+          >
+            {benchmark.deviation === null
+              ? "—"
+              : `${benchmark.deviation > 0 ? "+" : benchmark.deviation < 0 ? "−" : ""}${Math.abs(
+                  benchmark.deviation,
+                )
+                  .toFixed(1)
+                  .replace(".", ",")} p.p.`}
+          </p>
+        </div>
+      </div>
+      <p className="text-muted-foreground text-xs">
+        {benchmark.label}. Comparación informativa, sin rankings ni clasificaciones de rendimiento.
+      </p>
+    </section>
+  );
+}
+
 export function AgentDetail({
   agent,
+  benchmark,
   onClose,
 }: {
   agent: AgentMetrics | null;
+  benchmark?: Benchmark | null;
   onClose: () => void;
 }) {
   return (
