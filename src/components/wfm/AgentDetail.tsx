@@ -66,7 +66,17 @@ function Metric({
 
 const pct = (v: number | null) => (v === null ? "—" : `${v.toFixed(1).replace(".", ",")}%`);
 
-function BenchmarkBlock({ benchmark }: { benchmark: Benchmark }) {
+function BenchmarkBlock({
+  benchmark,
+  agent,
+}: {
+  benchmark: Benchmark;
+  agent: AgentMetrics;
+}) {
+  const refShare =
+    benchmark.referenceKind === "shift"
+      ? agent.shiftBreakdown.find((s) => s.shiftId === benchmark.referenceShiftId)
+      : undefined;
   return (
     <TooltipProvider delayDuration={0}>
       <section className="border-border bg-surface space-y-2 rounded-md border p-3">
@@ -74,7 +84,12 @@ function BenchmarkBlock({ benchmark }: { benchmark: Benchmark }) {
           <h3 className="text-[11px] font-semibold tracking-[0.1em] uppercase">
             Comparación relativa
           </h3>
-          <p className="text-muted-foreground text-[11px]">{benchmark.referenceLabel}</p>
+          <p className="text-muted-foreground text-[11px]">
+            {benchmark.referenceLabel}
+            {refShare && agent.shiftBreakdown.length > 1
+              ? ` · ${refShare.percentage.toFixed(2).replace(".", ",")}% de los días`
+              : ""}
+          </p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <Metric
@@ -83,9 +98,17 @@ function BenchmarkBlock({ benchmark }: { benchmark: Benchmark }) {
             info="Ocupación agregada del agente seleccionado para el período evaluado. Se calcula como tiempo productivo total ÷ tiempo de sesión total, no como media de los porcentajes de cada sesión."
           />
           <Metric
-            label="Referencia"
+            label={
+              benchmark.referenceKind === "shift"
+                ? `Referencia · ${benchmark.referenceShiftName}`
+                : "Referencia · equipo"
+            }
             value={pct(benchmark.referenceOccupancy)}
-            info="Ocupación de referencia usada para la comparación. Si el turno del agente tiene suficientes agentes, se usa la ocupación agregada de ese turno; en caso contrario, la del equipo completo."
+            info={
+              benchmark.referenceKind === "shift"
+                ? `Ocupación agregada del turno ${benchmark.referenceShiftName} (turno dominante del agente): tiempo productivo total ÷ tiempo de sesión total de todos los agentes de ese turno. Es el mismo valor que aparece en Operación · Análisis por turno.`
+                : `Se usa la ocupación del equipo como referencia. ${benchmark.fallbackReason ?? ""}`
+            }
           />
           <Metric
             label="Equipo"
@@ -113,6 +136,16 @@ function BenchmarkBlock({ benchmark }: { benchmark: Benchmark }) {
         <p className="text-muted-foreground text-xs">
           {benchmark.label}. Comparación informativa, sin rankings ni clasificaciones de rendimiento.
         </p>
+        {benchmark.fallbackReason && (
+          <p className="text-muted-foreground text-xs">{benchmark.fallbackReason}</p>
+        )}
+        {refShare && agent.shiftBreakdown.length > 1 && (
+          <p className="text-muted-foreground text-xs">
+            El agente reparte su jornada entre varios turnos; la referencia corresponde a{" "}
+            {benchmark.referenceShiftName} ({refShare.days} día(s),{" "}
+            {refShare.percentage.toFixed(2).replace(".", ",")}%).
+          </p>
+        )}
       </section>
     </TooltipProvider>
   );
@@ -163,7 +196,7 @@ export function AgentDetail({
               />
             </div>
 
-            {benchmark && <BenchmarkBlock benchmark={benchmark} />}
+            {benchmark && <BenchmarkBlock benchmark={benchmark} agent={agent} />}
 
             {agent.shiftBreakdown.length > 1 && (
               <section className="border-border rounded-md border p-3">
