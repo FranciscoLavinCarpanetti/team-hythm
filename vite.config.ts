@@ -18,15 +18,16 @@ const ghPagesBase =
   process.env["GH_PAGES_BASE"] ?? (repoName ? `/${repoName}/` : "/");
 
 export default defineConfig({
-  tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
-    server: { entry: "server" },
-    // Static SPA output: one HTML shell, client-side router takes over.
-    ...(isGithubPages ? { spa: { enabled: true } } : {}),
-  },
-  // Static preset => plain files, no runtime server.
-  ...(isGithubPages ? { nitro: { preset: "static" as const } } : {}),
+  tanstackStart: isGithubPages
+    ? // Static SPA output: one HTML shell, client-side router takes over.
+      { spa: { enabled: true } }
+    : {
+        // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
+        // nitro/vite builds from this
+        server: { entry: "server" },
+      },
+  // No runtime server on GitHub Pages, so skip the nitro server bundle entirely.
+  ...(isGithubPages ? { nitro: false as const } : {}),
   vite: {
     ...(isGithubPages ? { base: ghPagesBase } : {}),
   },
