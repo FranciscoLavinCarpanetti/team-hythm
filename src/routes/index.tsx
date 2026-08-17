@@ -41,6 +41,7 @@ import { HistoryPanel } from "@/components/wfm/HistoryPanel";
 import { AgentTable, sortAgents, type SortState } from "@/components/wfm/AgentTable";
 import { AgentDetail } from "@/components/wfm/AgentDetail";
 import { ConfigPanel } from "@/components/wfm/ConfigPanel";
+import { AccessGate, SignOutButton } from "@/components/wfm/AccessGate";
 import type { AgentMetrics } from "@/lib/wfm/types";
 
 export const Route = createFileRoute("/")({
@@ -63,9 +64,11 @@ export const Route = createFileRoute("/")({
     ],
   }),
   component: () => (
-    <WfmProvider>
-      <Dashboard />
-    </WfmProvider>
+    <AccessGate>
+      <WfmProvider>
+        <Dashboard />
+      </WfmProvider>
+    </AccessGate>
   ),
 });
 
@@ -203,6 +206,7 @@ function Dashboard() {
                 <Trash2 className="size-4" /> Vaciar datos
               </Button>
             )}
+            <SignOutButton />
           </div>
         </div>
         <div className="bg-secondary-brand h-1 w-full" />
