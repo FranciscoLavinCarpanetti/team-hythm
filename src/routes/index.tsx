@@ -41,6 +41,7 @@ import { HistoryPanel } from "@/components/wfm/HistoryPanel";
 import { AgentTable, sortAgents, type SortState } from "@/components/wfm/AgentTable";
 import { AgentDetail } from "@/components/wfm/AgentDetail";
 import { ConfigPanel } from "@/components/wfm/ConfigPanel";
+import { AccessGate, SignOutButton } from "@/components/wfm/AccessGate";
 import type { AgentMetrics } from "@/lib/wfm/types";
 
 export const Route = createFileRoute("/")({
