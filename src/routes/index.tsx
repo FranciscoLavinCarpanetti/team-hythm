@@ -63,9 +63,11 @@ export const Route = createFileRoute("/")({
     ],
   }),
   component: () => (
-    <WfmProvider>
-      <Dashboard />
-    </WfmProvider>
+    <AccessGate>
+      <WfmProvider>
+        <Dashboard />
+      </WfmProvider>
+    </AccessGate>
   ),
 });
 
