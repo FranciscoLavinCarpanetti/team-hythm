@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,8 +105,6 @@ export function AccessGate({ children }: { children: ReactNode }) {
     <AccessContext.Provider value={{ email, signOut }}>{children}</AccessContext.Provider>
   );
 }
-
-import { createContext, useContext } from "react";
 
 const AccessContext = createContext<{ email: string; signOut: () => void } | null>(null);
 
