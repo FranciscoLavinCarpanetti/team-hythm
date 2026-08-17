@@ -206,6 +206,7 @@ function Dashboard() {
                 <Trash2 className="size-4" /> Vaciar datos
               </Button>
             )}
+            <SignOutButton />
           </div>
         </div>
         <div className="bg-secondary-brand h-1 w-full" />
