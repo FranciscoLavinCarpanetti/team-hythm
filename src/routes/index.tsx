@@ -33,6 +33,7 @@ import {
 import { formatDateKey } from "@/lib/wfm/time";
 import { UploadPanel } from "@/components/wfm/UploadPanel";
 import { KpiSummary } from "@/components/wfm/KpiSummary";
+import { OccupancyTarget } from "@/components/wfm/OccupancyTarget";
 import { LoadDistribution } from "@/components/wfm/LoadDistribution";
 import { OperationalAlerts } from "@/components/wfm/OperationalAlerts";
 import { ShiftAnalysis } from "@/components/wfm/ShiftAnalysis";
@@ -79,6 +80,8 @@ function Dashboard() {
     categories,
     shifts,
     expectedAdjustmentPercent,
+    occupancyTargetPercent,
+    occupancyTolerancePoints,
     clearData,
     importedAt,
     issues,
@@ -291,6 +294,11 @@ function Dashboard() {
                     </div>
 
                     <KpiSummary kpis={kpis} />
+                    <OccupancyTarget
+                      actual={kpis.avgOccupancy}
+                      target={occupancyTargetPercent}
+                      tolerance={occupancyTolerancePoints}
+                    />
                     <LoadDistribution slices={distribution} total={visibleAgents.length} />
                     <ShiftAnalysis shifts={shiftMetrics} />
                   </div>

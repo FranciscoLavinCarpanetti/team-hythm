@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Plus, RotateCcw, Target, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -89,8 +89,14 @@ export function ConfigPanel() {
     setShifts,
     expectedAdjustmentPercent,
     setExpectedAdjustmentPercent,
+    occupancyTargetPercent,
+    occupancyTolerancePoints,
+    setOccupancyTargetPercent,
+    setOccupancyTolerancePoints,
     records,
   } = useWfm();
+  const [draftTarget, setDraftTarget] = useState<string>(String(occupancyTargetPercent));
+  const [draftTolerance, setDraftTolerance] = useState<string>(String(occupancyTolerancePoints));
   const [draftCategories, setDraftCategories] = useState<LoadCategory[]>(categories);
   const [draftShifts, setDraftShifts] = useState<Shift[]>(shifts);
   const [draftAdjustment, setDraftAdjustment] = useState<string>(String(expectedAdjustmentPercent));
@@ -98,6 +104,19 @@ export function ConfigPanel() {
   useEffect(() => setDraftCategories(categories), [categories]);
   useEffect(() => setDraftShifts(shifts), [shifts]);
   useEffect(() => setDraftAdjustment(String(expectedAdjustmentPercent)), [expectedAdjustmentPercent]);
+  useEffect(() => setDraftTarget(String(occupancyTargetPercent)), [occupancyTargetPercent]);
+  useEffect(() => setDraftTolerance(String(occupancyTolerancePoints)), [occupancyTolerancePoints]);
+
+  const targetValue = Number(draftTarget.replace(",", "."));
+  const toleranceValue = Number(draftTolerance.replace(",", "."));
+  const targetInvalid = !Number.isFinite(targetValue) || targetValue < 0 || targetValue > 100;
+  const toleranceInvalid =
+    !Number.isFinite(toleranceValue) ||
+    toleranceValue < 0 ||
+    toleranceValue > MAX_OCCUPANCY_TOLERANCE;
+  const paramsDirty =
+    (!targetInvalid && targetValue !== occupancyTargetPercent) ||
+    (!toleranceInvalid && toleranceValue !== occupancyTolerancePoints);
 
   const adjustmentValue = Number(draftAdjustment.replace(",", "."));
   const adjustmentInvalid = !Number.isFinite(adjustmentValue) || adjustmentValue < -100;
