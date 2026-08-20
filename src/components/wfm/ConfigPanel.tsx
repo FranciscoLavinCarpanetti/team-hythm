@@ -13,7 +13,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DEFAULT_CATEGORIES, DEFAULT_SHIFTS, useWfm } from "@/lib/wfm/store";
-import { isValidTime, shiftDurationLabel, validateCategories } from "@/lib/wfm/aggregate";
+import {
+  aggregateAgents,
+  isValidTime,
+  shiftDurationLabel,
+  validateCategories,
+} from "@/lib/wfm/aggregate";
 import { formatSeconds } from "@/lib/wfm/time";
 import type { CategoryStatus, LoadCategory, Shift } from "@/lib/wfm/types";
 
@@ -73,6 +78,7 @@ export function ConfigPanel() {
     setShifts,
     expectedAdjustmentPercent,
     setExpectedAdjustmentPercent,
+    records,
   } = useWfm();
   const [draftCategories, setDraftCategories] = useState<LoadCategory[]>(categories);
   const [draftShifts, setDraftShifts] = useState<Shift[]>(shifts);
@@ -162,8 +168,15 @@ export function ConfigPanel() {
             />
           </div>
           <p className="text-muted-foreground text-xs md:pb-2">
-            Ejemplo: 18 agentes × 7:30 h = 135:00:00 esperadas · con el ajuste actual ={" "}
-            <span className="text-foreground font-mono font-semibold">{previewExample}</span>
+            {records.length === 0 ? (
+              "Importa un Excel para ver la jornada esperada resultante."
+            ) : (
+              <>
+                Datos importados: {agentCount} agente(s) · esperado sin ajuste{" "}
+                <span className="font-mono">{previewBase}</span> · con este ajuste ={" "}
+                <span className="text-foreground font-mono font-semibold">{previewExample}</span>
+              </>
+            )}
           </p>
         </div>
 
