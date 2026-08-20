@@ -20,16 +20,23 @@ import {
   validateCategories,
 } from "@/lib/wfm/aggregate";
 import { formatSeconds } from "@/lib/wfm/time";
-import { CategoryBadge } from "./OccupancyCell";
+import {
+  CategoryBadge,
+  STATUS_ICON,
+  STATUS_LABEL,
+  STATUS_TEXT_CLASS,
+  formatRange,
+} from "./OccupancyCell";
+import { cn } from "@/lib/utils";
 import type { CategoryStatus, LoadCategory, Shift } from "@/lib/wfm/types";
 
 const STATUS_OPTIONS: { value: CategoryStatus; label: string }[] = [
-  { value: "low", label: "🔵 Azul (baja)" },
-  { value: "moderate-low", label: "🟡 Amarillo (moderadamente baja)" },
-  { value: "balanced", label: "🟢 Verde (equilibrada)" },
-  { value: "high", label: "🟠 Naranja (alta)" },
-  { value: "very-high", label: "🔴 Rojo (muy alta)" },
-  { value: "critical", label: "🔴 Rojo intenso (crítica)" },
+  { value: "low", label: STATUS_LABEL["low"] },
+  { value: "moderate-low", label: STATUS_LABEL["moderate-low"] },
+  { value: "balanced", label: STATUS_LABEL["balanced"] },
+  { value: "high", label: STATUS_LABEL["high"] },
+  { value: "very-high", label: STATUS_LABEL["very-high"] },
+  { value: "critical", label: STATUS_LABEL["critical"] },
 ];
 
 function Section({
@@ -245,127 +252,182 @@ export function ConfigPanel() {
           </>
         }
       >
-        <div className="space-y-3">
-          {draftCategories.map((category, index) => (
-            <div
-              key={category.id}
-              className="border-border/60 grid gap-2 rounded-sm border p-2 md:grid-cols-[1.4fr_repeat(3,0.8fr)_0.6fr_auto] md:items-end md:border-0 md:p-0"
-            >
-              <div className="space-y-1">
-                <Label htmlFor={`cat-name-${category.id}`} className="text-xs">
-                  Nombre
-                </Label>
-                <Input
-                  id={`cat-name-${category.id}`}
-                  value={category.name}
-                  onChange={(e) =>
-                    setDraftCategories((list) =>
-                      list.map((c, i) => (i === index ? { ...c, name: e.target.value } : c)),
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor={`cat-min-${category.id}`} className="text-xs">
-                  Mínimo %
-                </Label>
-                <Input
-                  id={`cat-min-${category.id}`}
-                  type="number"
-                  step="0.1"
-                  inputMode="decimal"
-                  value={category.min}
-                  onChange={(e) =>
-                    setDraftCategories((list) =>
-                      list.map((c, i) => (i === index ? { ...c, min: Number(e.target.value) } : c)),
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor={`cat-max-${category.id}`} className="text-xs">
-                  Máximo %
-                </Label>
-                <Input
-                  id={`cat-max-${category.id}`}
-                  type="number"
-                  step="0.1"
-                  inputMode="decimal"
-                  value={category.max}
-                  onChange={(e) =>
-                    setDraftCategories((list) =>
-                      list.map((c, i) => (i === index ? { ...c, max: Number(e.target.value) } : c)),
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Estado visual</Label>
-                <Select
-                  value={category.status}
-                  onValueChange={(value) =>
-                    setDraftCategories((list) =>
-                      list.map((c, i) =>
-                        i === index ? { ...c, status: value as CategoryStatus } : c,
-                      ),
-                    )
-                  }
-                >
-                  <SelectTrigger aria-label={`Estado visual de ${category.name}`}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {STATUS_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor={`cat-order-${category.id}`} className="text-xs">
-                  Orden
-                </Label>
-                <Input
-                  id={`cat-order-${category.id}`}
-                  type="number"
-                  value={category.order}
-                  onChange={(e) =>
-                    setDraftCategories((list) =>
-                      list.map((c, i) => (i === index ? { ...c, order: Number(e.target.value) } : c)),
-                    )
-                  }
-                />
-              </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                aria-label={`Eliminar categoría ${category.name}`}
-                disabled={draftCategories.length <= 1}
-                onClick={() => setDraftCategories((list) => list.filter((_, i) => i !== index))}
+        <div className="space-y-2.5">
+          {draftCategories.map((category, index) => {
+            const Icon = STATUS_ICON[category.status];
+            return (
+              <div
+                key={category.id}
+                className="border-border bg-surface/60 rounded-sm border p-3"
               >
-                <Trash2 className="size-3.5" />
-              </Button>
-            </div>
-          ))}
+                <div className="border-border/70 mb-3 flex flex-wrap items-center justify-between gap-2 border-b pb-2.5">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span
+                      className={cn(
+                        "border-border bg-card flex size-8 shrink-0 items-center justify-center rounded-sm border",
+                      )}
+                    >
+                      <Icon
+                        className={cn("size-4", STATUS_TEXT_CLASS[category.status])}
+                        strokeWidth={2.5}
+                        aria-hidden="true"
+                      />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {category.name || "Sin nombre"}
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        {STATUS_LABEL[category.status]} ·{" "}
+                        <span className="font-mono tabular-nums">
+                          {formatRange(category.min, category.max)}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CategoryBadge category={category} />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Eliminar categoría ${category.name}`}
+                      disabled={draftCategories.length <= 1}
+                      onClick={() =>
+                        setDraftCategories((list) => list.filter((_, i) => i !== index))
+                      }
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.6fr_0.8fr_0.8fr_1.4fr_0.7fr] lg:items-end">
+                  <div className="space-y-1">
+                    <Label htmlFor={`cat-name-${category.id}`} className="text-xs">
+                      Nombre
+                    </Label>
+                    <Input
+                      id={`cat-name-${category.id}`}
+                      value={category.name}
+                      onChange={(e) =>
+                        setDraftCategories((list) =>
+                          list.map((c, i) => (i === index ? { ...c, name: e.target.value } : c)),
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor={`cat-min-${category.id}`} className="text-xs">
+                      Mínimo %
+                    </Label>
+                    <Input
+                      id={`cat-min-${category.id}`}
+                      type="number"
+                      step="0.1"
+                      inputMode="decimal"
+                      className="font-mono tabular-nums"
+                      value={category.min}
+                      onChange={(e) =>
+                        setDraftCategories((list) =>
+                          list.map((c, i) =>
+                            i === index ? { ...c, min: Number(e.target.value) } : c,
+                          ),
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor={`cat-max-${category.id}`} className="text-xs">
+                      Máximo %
+                    </Label>
+                    <Input
+                      id={`cat-max-${category.id}`}
+                      type="number"
+                      step="0.1"
+                      inputMode="decimal"
+                      className="font-mono tabular-nums"
+                      value={category.max}
+                      onChange={(e) =>
+                        setDraftCategories((list) =>
+                          list.map((c, i) =>
+                            i === index ? { ...c, max: Number(e.target.value) } : c,
+                          ),
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Estado visual</Label>
+                    <Select
+                      value={category.status}
+                      onValueChange={(value) =>
+                        setDraftCategories((list) =>
+                          list.map((c, i) =>
+                            i === index ? { ...c, status: value as CategoryStatus } : c,
+                          ),
+                        )
+                      }
+                    >
+                      <SelectTrigger aria-label={`Estado visual de ${category.name}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.map((option) => {
+                          const OptionIcon = STATUS_ICON[option.value];
+                          return (
+                            <SelectItem key={option.value} value={option.value}>
+                              <span className="flex items-center gap-2">
+                                <OptionIcon
+                                  className={cn("size-3.5", STATUS_TEXT_CLASS[option.value])}
+                                  strokeWidth={2.5}
+                                  aria-hidden="true"
+                                />
+                                {option.label}
+                              </span>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor={`cat-order-${category.id}`} className="text-xs">
+                      Orden
+                    </Label>
+                    <Input
+                      id={`cat-order-${category.id}`}
+                      type="number"
+                      className="font-mono tabular-nums"
+                      value={category.order}
+                      onChange={(e) =>
+                        setDraftCategories((list) =>
+                          list.map((c, i) =>
+                            i === index ? { ...c, order: Number(e.target.value) } : c,
+                          ),
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        <div className="border-border/60 bg-surface rounded-sm border p-2">
+        <div className="border-border/60 bg-surface rounded-sm border p-3">
           <p className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
             Umbrales resultantes
           </p>
-          <ul className="mt-2 flex flex-wrap gap-1.5">
+          <p className="text-muted-foreground mt-1 text-xs">
+            Así se mostrará cada categoría en el panel de agentes.
+          </p>
+          <ul className="mt-2.5 flex flex-wrap gap-2">
             {orderedPreview.map((c) => (
-              <li key={c.id} className="flex items-center gap-1.5">
-                <CategoryBadge category={c} />
-                <span className="text-muted-foreground font-mono text-[11px]">
-                  {c.min.toString().replace(".", ",")}–{c.max.toString().replace(".", ",")}%
-                </span>
+              <li key={c.id}>
+                <CategoryBadge category={c} showRange />
               </li>
             ))}
           </ul>
-
         </div>
 
         {categoryErrors.length > 0 && (
