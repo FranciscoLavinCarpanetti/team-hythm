@@ -63,6 +63,7 @@ export function HistoryPanel() {
     loadSnapshot,
     shifts,
     categories,
+    expectedAdjustmentPercent,
   } = useWfm();
   const [aId, setAId] = useState<string>("");
   const [bId, setBId] = useState<string>("");
@@ -72,8 +73,8 @@ export function HistoryPanel() {
     const a = loadSnapshot(aId);
     const b = loadSnapshot(bId);
     if (!a?.records.length || !b?.records.length) return null;
-    const aAgents = aggregateAgents(a.records, shifts, categories);
-    const bAgents = aggregateAgents(b.records, shifts, categories);
+    const aAgents = aggregateAgents(a.records, shifts, categories, expectedAdjustmentPercent);
+    const bAgents = aggregateAgents(b.records, shifts, categories, expectedAdjustmentPercent);
     const aKpis = computeKpis(aAgents);
     const bKpis = computeKpis(bAgents);
     return {
