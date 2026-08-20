@@ -81,6 +81,8 @@ type WfmContextValue = Config & {
   setShifts: (shifts: Shift[]) => void;
   setCategories: (categories: LoadCategory[]) => void;
   setExpectedAdjustmentPercent: (percent: number) => void;
+  setOccupancyTargetPercent: (percent: number) => void;
+  setOccupancyTolerancePoints: (points: number) => void;
   assignShift: (agent: string, shiftId: string | null) => void;
   applyImport: (result: ParseResult) => void;
   clearData: () => void;
@@ -93,12 +95,28 @@ type WfmContextValue = Config & {
 
 const WfmContext = createContext<WfmContextValue | null>(null);
 
+/** Objetivo válido: 0–100 %. Valores ausentes o corruptos vuelven al 70 % por defecto. */
+function sanitizeTarget(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0 || n > 100) return DEFAULT_OCCUPANCY_TARGET;
+  return n;
+}
+
+/** Tolerancia válida: 0–50 pp. */
+function sanitizeTolerance(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0 || n > MAX_OCCUPANCY_TOLERANCE) return DEFAULT_OCCUPANCY_TOLERANCE;
+  return n;
+}
+
 function loadConfig(): Config {
   const fallback: Config = {
     shifts: DEFAULT_SHIFTS,
     categories: DEFAULT_CATEGORIES,
     assignments: {},
     expectedAdjustmentPercent: DEFAULT_EXPECTED_ADJUSTMENT,
+    occupancyTargetPercent: DEFAULT_OCCUPANCY_TARGET,
+    occupancyTolerancePoints: DEFAULT_OCCUPANCY_TOLERANCE,
   };
   if (typeof window === "undefined") return fallback;
   try {
@@ -116,6 +134,8 @@ function loadConfig(): Config {
       expectedAdjustmentPercent: Number.isFinite(parsed.expectedAdjustmentPercent)
         ? Number(parsed.expectedAdjustmentPercent)
         : DEFAULT_EXPECTED_ADJUSTMENT,
+      occupancyTargetPercent: sanitizeTarget(parsed.occupancyTargetPercent),
+      occupancyTolerancePoints: sanitizeTolerance(parsed.occupancyTolerancePoints),
     };
   } catch {
     return fallback;
@@ -128,6 +148,8 @@ export function WfmProvider({ children }: { children: ReactNode }) {
     categories: DEFAULT_CATEGORIES,
     assignments: {},
     expectedAdjustmentPercent: DEFAULT_EXPECTED_ADJUSTMENT,
+    occupancyTargetPercent: DEFAULT_OCCUPANCY_TARGET,
+    occupancyTolerancePoints: DEFAULT_OCCUPANCY_TOLERANCE,
   });
   const [records, setRecords] = useState<SessionRecord[]>([]);
   const [dates, setDates] = useState<string[]>([]);
@@ -194,6 +216,10 @@ export function WfmProvider({ children }: { children: ReactNode }) {
       setCategories: (categories) => setConfig((c) => ({ ...c, categories })),
       setExpectedAdjustmentPercent: (percent) =>
         setConfig((c) => ({ ...c, expectedAdjustmentPercent: percent })),
+      setOccupancyTargetPercent: (percent) =>
+        setConfig((c) => ({ ...c, occupancyTargetPercent: sanitizeTarget(percent) })),
+      setOccupancyTolerancePoints: (points) =>
+        setConfig((c) => ({ ...c, occupancyTolerancePoints: sanitizeTolerance(points) })),
       assignShift: (agent, shiftId) =>
         setConfig((c) => ({ ...c, assignments: { ...c.assignments, [agent]: shiftId } })),
       applyImport,
