@@ -65,12 +65,27 @@ const slug = (value: string) =>
     .replace(/(^-|-$)/g, "") || `id-${Date.now()}`;
 
 export function ConfigPanel() {
-  const { categories, setCategories, shifts, setShifts } = useWfm();
+  const {
+    categories,
+    setCategories,
+    shifts,
+    setShifts,
+    expectedAdjustmentPercent,
+    setExpectedAdjustmentPercent,
+  } = useWfm();
   const [draftCategories, setDraftCategories] = useState<LoadCategory[]>(categories);
   const [draftShifts, setDraftShifts] = useState<Shift[]>(shifts);
+  const [draftAdjustment, setDraftAdjustment] = useState<string>(String(expectedAdjustmentPercent));
 
   useEffect(() => setDraftCategories(categories), [categories]);
   useEffect(() => setDraftShifts(shifts), [shifts]);
+  useEffect(() => setDraftAdjustment(String(expectedAdjustmentPercent)), [expectedAdjustmentPercent]);
+
+  const adjustmentValue = Number(draftAdjustment.replace(",", "."));
+  const adjustmentInvalid = !Number.isFinite(adjustmentValue) || adjustmentValue < -100;
+  const adjustmentDirty = !adjustmentInvalid && adjustmentValue !== expectedAdjustmentPercent;
+  const adjustmentFactor = adjustmentInvalid ? 1 : Math.max(0, 1 + adjustmentValue / 100);
+  const previewExample = formatSeconds(18 * 7.5 * 3600 * adjustmentFactor);
 
   const categoryErrors = useMemo(() => validateCategories(draftCategories), [draftCategories]);
   const shiftErrors = useMemo(
