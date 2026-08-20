@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 const STYLE: Record<OperationalAlert["severity"], string> = {
   critical: "border-status-high/50 bg-status-high/10 text-status-high-foreground",
-  warning: "border-status-balanced/50 bg-status-balanced/10 text-status-balanced-foreground",
+  warning: "border-status-warning/50 bg-status-warning/10 text-status-warning-foreground",
   info: "border-border bg-surface text-foreground",
 };
 

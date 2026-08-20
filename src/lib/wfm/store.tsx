@@ -28,9 +28,19 @@ export const DEFAULT_SHIFTS: Shift[] = [
 ];
 
 export const DEFAULT_CATEGORIES: LoadCategory[] = [
-  { id: "baja", name: "Baja", min: 0, max: 29.9, status: "low", order: 1 },
-  { id: "equilibrada", name: "Equilibrada", min: 30, max: 60, status: "balanced", order: 2 },
-  { id: "alta", name: "Alta", min: 60.1, max: 100, status: "high", order: 3 },
+  { id: "baja", name: "Baja", min: 0, max: 55, status: "low", order: 1 },
+  {
+    id: "moderadamente-baja",
+    name: "Moderadamente baja",
+    min: 55.01,
+    max: 59.99,
+    status: "moderate-low",
+    order: 2,
+  },
+  { id: "equilibrada", name: "Equilibrada", min: 60, max: 75, status: "balanced", order: 3 },
+  { id: "alta", name: "Alta", min: 75.01, max: 85, status: "high", order: 4 },
+  { id: "muy-alta", name: "Muy alta", min: 85.01, max: 90, status: "very-high", order: 5 },
+  { id: "critica", name: "Crítica", min: 90.01, max: 100, status: "critical", order: 6 },
 ];
 
 export const DEFAULT_EXPECTED_ADJUSTMENT = 0;

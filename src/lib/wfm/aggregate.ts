@@ -208,8 +208,8 @@ export function aggregateAgents(
 export function computeKpis(agents: AgentMetrics[]): Kpis {
   const productiveSeconds = agents.reduce((a, x) => a + x.productiveSeconds, 0);
   const sessionSeconds = agents.reduce((a, x) => a + x.sessionSeconds, 0);
-  const count = (status: LoadCategory["status"]) =>
-    agents.filter((a) => a.category?.status === status).length;
+  const count = (...statuses: LoadCategory["status"][]) =>
+    agents.filter((a) => a.category && statuses.includes(a.category.status)).length;
 
   const expectedActiveSeconds = agents.reduce((a, x) => a + x.expectedActiveSeconds, 0);
 
@@ -222,9 +222,9 @@ export function computeKpis(agents: AgentMetrics[]): Kpis {
     expectedActiveSeconds,
     idleSeconds: agents.reduce((a, x) => a + x.idleSeconds, 0),
     avgOccupancy: computeOccupancy(productiveSeconds, sessionSeconds),
-    low: count("low"),
+    low: count("low", "moderate-low"),
     balanced: count("balanced"),
-    high: count("high"),
+    high: count("high", "very-high", "critical"),
     withoutShift: agents.filter((a) => a.shiftId === null).length,
   };
 }

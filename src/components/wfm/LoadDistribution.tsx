@@ -3,8 +3,11 @@ import { cn } from "@/lib/utils";
 
 const BAR: Record<string, string> = {
   low: "bg-status-low",
+  "moderate-low": "bg-status-moderate",
   balanced: "bg-status-balanced",
-  high: "bg-status-high",
+  high: "bg-status-warning",
+  "very-high": "bg-status-high",
+  critical: "bg-status-critical",
   none: "bg-muted-foreground/40",
 };
 

@@ -23,9 +23,12 @@ import { formatSeconds } from "@/lib/wfm/time";
 import type { CategoryStatus, LoadCategory, Shift } from "@/lib/wfm/types";
 
 const STATUS_OPTIONS: { value: CategoryStatus; label: string }[] = [
-  { value: "low", label: "Verde (carga baja)" },
-  { value: "balanced", label: "Ámbar (equilibrada)" },
-  { value: "high", label: "Rojo (carga alta)" },
+  { value: "low", label: "🔵 Azul (baja)" },
+  { value: "moderate-low", label: "🟡 Amarillo (moderadamente baja)" },
+  { value: "balanced", label: "🟢 Verde (equilibrada)" },
+  { value: "high", label: "🟠 Naranja (alta)" },
+  { value: "very-high", label: "🔴 Rojo (muy alta)" },
+  { value: "critical", label: "🔴 Rojo intenso (crítica)" },
 ];
 
 function Section({
@@ -217,7 +220,7 @@ export function ConfigPanel() {
                     id: `cat-${Date.now()}`,
                     name: "Nueva categoría",
                     min: 0,
-                    max: 0,
+                    max: 0.1,
                     status: "balanced",
                     order: list.length + 1,
                   },

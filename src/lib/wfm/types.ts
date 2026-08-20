@@ -59,7 +59,13 @@ export type Shift = {
   end: string; // HH:MM
 };
 
-export type CategoryStatus = "low" | "balanced" | "high";
+export type CategoryStatus =
+  | "low"
+  | "moderate-low"
+  | "balanced"
+  | "high"
+  | "very-high"
+  | "critical";
 
 export type LoadCategory = {
   id: string;

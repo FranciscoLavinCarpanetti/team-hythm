@@ -3,14 +3,20 @@ import { cn } from "@/lib/utils";
 
 const STATUS_BAR: Record<LoadCategory["status"], string> = {
   low: "bg-status-low",
+  "moderate-low": "bg-status-moderate",
   balanced: "bg-status-balanced",
-  high: "bg-status-high",
+  high: "bg-status-warning",
+  "very-high": "bg-status-high",
+  critical: "bg-status-critical",
 };
 
 const STATUS_TEXT: Record<LoadCategory["status"], string> = {
   low: "text-status-low-foreground",
+  "moderate-low": "text-status-moderate-foreground",
   balanced: "text-status-balanced-foreground",
-  high: "text-status-high-foreground",
+  high: "text-status-warning-foreground",
+  "very-high": "text-status-high-foreground",
+  critical: "text-status-critical-foreground",
 };
 
 export function OccupancyCell({
@@ -50,8 +56,12 @@ export function CategoryBadge({ category }: { category: LoadCategory | null }) {
   if (!category) return <span className="text-muted-foreground text-xs">Sin categoría</span>;
   const map: Record<LoadCategory["status"], string> = {
     low: "border-status-low/40 bg-status-low/15 text-status-low-foreground",
+    "moderate-low":
+      "border-status-moderate/40 bg-status-moderate/15 text-status-moderate-foreground",
     balanced: "border-status-balanced/40 bg-status-balanced/15 text-status-balanced-foreground",
-    high: "border-status-high/40 bg-status-high/15 text-status-high-foreground",
+    high: "border-status-warning/40 bg-status-warning/15 text-status-warning-foreground",
+    "very-high": "border-status-high/40 bg-status-high/15 text-status-high-foreground",
+    critical: "border-status-critical/40 bg-status-critical/15 text-status-critical-foreground",
   };
   return (
     <span
