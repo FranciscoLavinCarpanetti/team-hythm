@@ -45,6 +45,12 @@ export const DEFAULT_CATEGORIES: LoadCategory[] = [
 
 export const DEFAULT_EXPECTED_ADJUSTMENT = 0;
 
+/** Objetivo de ocupación (referencia WFM configurable, no un SLA). */
+export const DEFAULT_OCCUPANCY_TARGET = 70;
+/** Tolerancia en puntos porcentuales alrededor del objetivo. */
+export const DEFAULT_OCCUPANCY_TOLERANCE = 5;
+export const MAX_OCCUPANCY_TOLERANCE = 50;
+
 const CATEGORIES_VERSION = 2;
 
 type Config = {
@@ -55,7 +61,12 @@ type Config = {
   assignments: Record<string, string | null>;
   /** Ajuste % (positivo o negativo) sobre las horas esperadas. */
   expectedAdjustmentPercent: number;
+  /** Objetivo global de ocupación en %. */
+  occupancyTargetPercent: number;
+  /** Tolerancia ± en puntos porcentuales. */
+  occupancyTolerancePoints: number;
 };
+
 
 type WfmContextValue = Config & {
   records: SessionRecord[];
