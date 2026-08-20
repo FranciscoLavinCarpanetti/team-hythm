@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Plus, RotateCcw, Target, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DEFAULT_CATEGORIES, DEFAULT_SHIFTS, useWfm } from "@/lib/wfm/store";
+import {
+  DEFAULT_CATEGORIES,
+  DEFAULT_OCCUPANCY_TARGET,
+  DEFAULT_OCCUPANCY_TOLERANCE,
+  DEFAULT_SHIFTS,
+  MAX_OCCUPANCY_TOLERANCE,
+  useWfm,
+} from "@/lib/wfm/store";
 import {
   aggregateAgents,
   isValidTime,
@@ -89,8 +96,14 @@ export function ConfigPanel() {
     setShifts,
     expectedAdjustmentPercent,
     setExpectedAdjustmentPercent,
+    occupancyTargetPercent,
+    occupancyTolerancePoints,
+    setOccupancyTargetPercent,
+    setOccupancyTolerancePoints,
     records,
   } = useWfm();
+  const [draftTarget, setDraftTarget] = useState<string>(String(occupancyTargetPercent));
+  const [draftTolerance, setDraftTolerance] = useState<string>(String(occupancyTolerancePoints));
   const [draftCategories, setDraftCategories] = useState<LoadCategory[]>(categories);
   const [draftShifts, setDraftShifts] = useState<Shift[]>(shifts);
   const [draftAdjustment, setDraftAdjustment] = useState<string>(String(expectedAdjustmentPercent));
@@ -98,6 +111,19 @@ export function ConfigPanel() {
   useEffect(() => setDraftCategories(categories), [categories]);
   useEffect(() => setDraftShifts(shifts), [shifts]);
   useEffect(() => setDraftAdjustment(String(expectedAdjustmentPercent)), [expectedAdjustmentPercent]);
+  useEffect(() => setDraftTarget(String(occupancyTargetPercent)), [occupancyTargetPercent]);
+  useEffect(() => setDraftTolerance(String(occupancyTolerancePoints)), [occupancyTolerancePoints]);
+
+  const targetValue = Number(draftTarget.replace(",", "."));
+  const toleranceValue = Number(draftTolerance.replace(",", "."));
+  const targetInvalid = !Number.isFinite(targetValue) || targetValue < 0 || targetValue > 100;
+  const toleranceInvalid =
+    !Number.isFinite(toleranceValue) ||
+    toleranceValue < 0 ||
+    toleranceValue > MAX_OCCUPANCY_TOLERANCE;
+  const paramsDirty =
+    (!targetInvalid && targetValue !== occupancyTargetPercent) ||
+    (!toleranceInvalid && toleranceValue !== occupancyTolerancePoints);
 
   const adjustmentValue = Number(draftAdjustment.replace(",", "."));
   const adjustmentInvalid = !Number.isFinite(adjustmentValue) || adjustmentValue < -100;
@@ -209,6 +235,108 @@ export function ConfigPanel() {
           }}
         >
           Guardar ajuste
+        </Button>
+      </Section>
+
+      <Section
+        title="Parámetros operativos"
+        description="Objetivo de ocupación de referencia (WFM) y tolerancia aceptada. Es una referencia de negocio para interpretar la capacidad, no un SLA contractual ni un límite obligatorio."
+        dirty={paramsDirty}
+        actions={
+          <>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setDraftTarget(String(DEFAULT_OCCUPANCY_TARGET));
+                setDraftTolerance(String(DEFAULT_OCCUPANCY_TOLERANCE));
+              }}
+            >
+              <RotateCcw className="size-3.5" /> Valores por defecto
+            </Button>
+            {paramsDirty && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setDraftTarget(String(occupancyTargetPercent));
+                  setDraftTolerance(String(occupancyTolerancePoints));
+                }}
+              >
+                Descartar
+              </Button>
+            )}
+          </>
+        }
+      >
+        <div className="grid gap-3 sm:grid-cols-[200px_200px_1fr] sm:items-end">
+          <div className="space-y-1">
+            <Label htmlFor="occupancy-target" className="text-xs">
+              Objetivo de ocupación (%)
+            </Label>
+            <Input
+              id="occupancy-target"
+              type="number"
+              step="0.1"
+              min={0}
+              max={100}
+              inputMode="decimal"
+              aria-invalid={targetInvalid}
+              value={draftTarget}
+              onChange={(e) => setDraftTarget(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="occupancy-tolerance" className="text-xs">
+              Tolerancia ± (pp)
+            </Label>
+            <Input
+              id="occupancy-tolerance"
+              type="number"
+              step="0.1"
+              min={0}
+              max={MAX_OCCUPANCY_TOLERANCE}
+              inputMode="decimal"
+              aria-invalid={toleranceInvalid}
+              value={draftTolerance}
+              onChange={(e) => setDraftTolerance(e.target.value)}
+            />
+          </div>
+          <p className="text-muted-foreground flex items-start gap-1.5 text-xs sm:pb-2">
+            <Target className="text-primary mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+            <span>
+              Rango en objetivo:{" "}
+              <span className="text-foreground font-mono font-semibold">
+                {targetInvalid || toleranceInvalid
+                  ? "—"
+                  : `${(targetValue - toleranceValue).toFixed(1).replace(".", ",")}% – ${(targetValue + toleranceValue).toFixed(1).replace(".", ",")}%`}
+              </span>
+              . Por debajo se interpreta como capacidad por encima del nivel objetivo; por encima,
+              como posible sobrecarga.
+            </span>
+          </p>
+        </div>
+
+        {(targetInvalid || toleranceInvalid) && (
+          <Alert variant="destructive">
+            <AlertTitle>Parámetros no válidos</AlertTitle>
+            <AlertDescription className="text-xs">
+              El objetivo debe estar entre 0 y 100 %. La tolerancia debe ser un valor en puntos
+              porcentuales entre 0 y {MAX_OCCUPANCY_TOLERANCE}.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <Button
+          size="sm"
+          disabled={targetInvalid || toleranceInvalid || !paramsDirty}
+          onClick={() => {
+            setOccupancyTargetPercent(targetValue);
+            setOccupancyTolerancePoints(toleranceValue);
+            toast.success("Parámetros operativos actualizados");
+          }}
+        >
+          Guardar parámetros
         </Button>
       </Section>
 
