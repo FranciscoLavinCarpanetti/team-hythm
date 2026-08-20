@@ -175,7 +175,7 @@ export function aggregateAgents(
     const workedDays = new Set(
       agentRecords.map((r) => r.operationalDate).filter((d): d is string => Boolean(d)),
     ).size;
-    const expectedActiveSeconds = workedDays * ACTIVE_SECONDS_PER_DAY;
+    const expectedActiveSeconds = workedDays * ACTIVE_SECONDS_PER_DAY * adjustmentFactor;
     const idleSeconds = Math.max(0, expectedActiveSeconds - productiveSeconds);
 
     return {
