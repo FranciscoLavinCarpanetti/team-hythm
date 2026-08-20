@@ -45,7 +45,11 @@ export const DEFAULT_CATEGORIES: LoadCategory[] = [
 
 export const DEFAULT_EXPECTED_ADJUSTMENT = 0;
 
+const CATEGORIES_VERSION = 2;
+
 type Config = {
+  /** Versión del set de categorías, para migrar umbrales antiguos guardados. */
+  categoriesVersion?: number;
   shifts: Shift[];
   categories: LoadCategory[];
   assignments: Record<string, string | null>;
@@ -92,7 +96,11 @@ function loadConfig(): Config {
     const parsed = JSON.parse(raw) as Partial<Config>;
     return {
       shifts: parsed.shifts?.length ? parsed.shifts : DEFAULT_SHIFTS,
-      categories: parsed.categories?.length ? parsed.categories : DEFAULT_CATEGORIES,
+      categoriesVersion: CATEGORIES_VERSION,
+      categories:
+        parsed.categoriesVersion === CATEGORIES_VERSION && parsed.categories?.length
+          ? parsed.categories
+          : DEFAULT_CATEGORIES,
       assignments: parsed.assignments ?? {},
       expectedAdjustmentPercent: Number.isFinite(parsed.expectedAdjustmentPercent)
         ? Number(parsed.expectedAdjustmentPercent)
