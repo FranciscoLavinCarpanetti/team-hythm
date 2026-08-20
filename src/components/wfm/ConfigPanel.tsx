@@ -86,7 +86,20 @@ export function ConfigPanel() {
   const adjustmentInvalid = !Number.isFinite(adjustmentValue) || adjustmentValue < -100;
   const adjustmentDirty = !adjustmentInvalid && adjustmentValue !== expectedAdjustmentPercent;
   const adjustmentFactor = adjustmentInvalid ? 1 : Math.max(0, 1 + adjustmentValue / 100);
-  const previewExample = formatSeconds(18 * 7.5 * 3600 * adjustmentFactor);
+
+  // Base esperada real del dataset importado (sin ajuste), para que la vista previa
+  // coincida con «Esp.» de Operación.
+  const baseExpectedSeconds = useMemo(
+    () =>
+      aggregateAgents(records, shifts, categories, 0).reduce(
+        (total, agent) => total + agent.expectedActiveSeconds,
+        0,
+      ),
+    [records, shifts, categories],
+  );
+  const agentCount = useMemo(() => new Set(records.map((r) => r.agent)).size, [records]);
+  const previewBase = formatSeconds(baseExpectedSeconds);
+  const previewExample = formatSeconds(baseExpectedSeconds * adjustmentFactor);
 
   const categoryErrors = useMemo(() => validateCategories(draftCategories), [draftCategories]);
   const shiftErrors = useMemo(
