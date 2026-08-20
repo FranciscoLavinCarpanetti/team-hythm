@@ -153,7 +153,10 @@ export function aggregateAgents(
   records: SessionRecord[],
   shifts: Shift[],
   categories: LoadCategory[],
+  /** Ajuste % sobre la jornada activa esperada (p. ej. -30 = 70% del esperado). */
+  expectedAdjustmentPercent = 0,
 ): AgentMetrics[] {
+  const adjustmentFactor = Math.max(0, 1 + expectedAdjustmentPercent / 100);
   const byAgent = new Map<string, SessionRecord[]>();
   for (const record of records) {
     const list = byAgent.get(record.agent);
