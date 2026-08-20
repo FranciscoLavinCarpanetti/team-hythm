@@ -33,10 +33,14 @@ export const DEFAULT_CATEGORIES: LoadCategory[] = [
   { id: "alta", name: "Alta", min: 60.1, max: 100, status: "high", order: 3 },
 ];
 
+export const DEFAULT_EXPECTED_ADJUSTMENT = 0;
+
 type Config = {
   shifts: Shift[];
   categories: LoadCategory[];
   assignments: Record<string, string | null>;
+  /** Ajuste % (positivo o negativo) sobre las horas esperadas. */
+  expectedAdjustmentPercent: number;
 };
 
 type WfmContextValue = Config & {
