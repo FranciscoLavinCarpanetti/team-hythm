@@ -78,6 +78,7 @@ function Dashboard() {
     dates,
     categories,
     shifts,
+    expectedAdjustmentPercent,
     clearData,
     importedAt,
     issues,

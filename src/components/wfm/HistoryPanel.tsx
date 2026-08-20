@@ -86,7 +86,7 @@ export function HistoryPanel() {
         aggregateByShift(bAgents, shifts, categories),
       ),
     };
-  }, [aId, bId, loadSnapshot, shifts, categories]);
+  }, [aId, bId, loadSnapshot, shifts, categories, expectedAdjustmentPercent]);
 
   if (historyList.length === 0) {
     return (
