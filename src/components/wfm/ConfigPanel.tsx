@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { DEFAULT_CATEGORIES, DEFAULT_SHIFTS, useWfm } from "@/lib/wfm/store";
 import { isValidTime, shiftDurationLabel, validateCategories } from "@/lib/wfm/aggregate";
+import { formatSeconds } from "@/lib/wfm/time";
 import type { CategoryStatus, LoadCategory, Shift } from "@/lib/wfm/types";
 
 const STATUS_OPTIONS: { value: CategoryStatus; label: string }[] = [
@@ -65,12 +66,27 @@ const slug = (value: string) =>
     .replace(/(^-|-$)/g, "") || `id-${Date.now()}`;
 
 export function ConfigPanel() {
-  const { categories, setCategories, shifts, setShifts } = useWfm();
+  const {
+    categories,
+    setCategories,
+    shifts,
+    setShifts,
+    expectedAdjustmentPercent,
+    setExpectedAdjustmentPercent,
+  } = useWfm();
   const [draftCategories, setDraftCategories] = useState<LoadCategory[]>(categories);
   const [draftShifts, setDraftShifts] = useState<Shift[]>(shifts);
+  const [draftAdjustment, setDraftAdjustment] = useState<string>(String(expectedAdjustmentPercent));
 
   useEffect(() => setDraftCategories(categories), [categories]);
   useEffect(() => setDraftShifts(shifts), [shifts]);
+  useEffect(() => setDraftAdjustment(String(expectedAdjustmentPercent)), [expectedAdjustmentPercent]);
+
+  const adjustmentValue = Number(draftAdjustment.replace(",", "."));
+  const adjustmentInvalid = !Number.isFinite(adjustmentValue) || adjustmentValue < -100;
+  const adjustmentDirty = !adjustmentInvalid && adjustmentValue !== expectedAdjustmentPercent;
+  const adjustmentFactor = adjustmentInvalid ? 1 : Math.max(0, 1 + adjustmentValue / 100);
+  const previewExample = formatSeconds(18 * 7.5 * 3600 * adjustmentFactor);
 
   const categoryErrors = useMemo(() => validateCategories(draftCategories), [draftCategories]);
   const shiftErrors = useMemo(
@@ -97,6 +113,68 @@ export function ConfigPanel() {
 
   return (
     <div className="space-y-4">
+      <Section
+        title="Ajuste de horas esperadas"
+        description="Porcentaje positivo o negativo aplicado a la jornada activa esperada (7:30 h por día trabajado). Afecta a «T. Inactivo Esp.» y al tiempo inactivo de cada agente."
+        dirty={adjustmentDirty}
+        actions={
+          <>
+            <Button size="sm" variant="ghost" onClick={() => setDraftAdjustment("0")}>
+              <RotateCcw className="size-3.5" /> Sin ajuste
+            </Button>
+            {adjustmentDirty && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setDraftAdjustment(String(expectedAdjustmentPercent))}
+              >
+                Descartar
+              </Button>
+            )}
+          </>
+        }
+      >
+        <div className="grid gap-3 md:grid-cols-[200px_1fr] md:items-end">
+          <div className="space-y-1">
+            <Label htmlFor="expected-adjustment" className="text-xs">
+              Ajuste %
+            </Label>
+            <Input
+              id="expected-adjustment"
+              type="number"
+              step="0.1"
+              inputMode="decimal"
+              value={draftAdjustment}
+              onChange={(e) => setDraftAdjustment(e.target.value)}
+            />
+          </div>
+          <p className="text-muted-foreground text-xs md:pb-2">
+            Ejemplo: 18 agentes × 7:30 h = 135:00:00 esperadas · con el ajuste actual ={" "}
+            <span className="text-foreground font-mono font-semibold">{previewExample}</span>
+          </p>
+        </div>
+
+        {adjustmentInvalid && (
+          <Alert variant="destructive">
+            <AlertTitle>Ajuste no válido</AlertTitle>
+            <AlertDescription className="text-xs">
+              Introduce un número mayor o igual a -100 (por ejemplo -30 o 10).
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <Button
+          size="sm"
+          disabled={adjustmentInvalid || !adjustmentDirty}
+          onClick={() => {
+            setExpectedAdjustmentPercent(adjustmentValue);
+            toast.success("Ajuste de horas esperadas actualizado");
+          }}
+        >
+          Guardar ajuste
+        </Button>
+      </Section>
+
       <Section
         title="Categorías de carga (reglas de negocio configurables)"
         description="Los umbrales de ocupación no están fijados en el código: al guardarlos, todas las categorías de agente se recalculan automáticamente."

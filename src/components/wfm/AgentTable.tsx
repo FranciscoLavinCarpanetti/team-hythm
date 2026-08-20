@@ -166,7 +166,7 @@ export function AgentTable({
               </td>
               <td
                 className="px-3.5 py-2 text-right font-mono font-semibold tabular-nums"
-                title={`Jornada activa esperada: ${formatSeconds(agent.expectedActiveSeconds)} (${agent.workedDays} día(s) × 7:30)`}
+                title={`Jornada activa esperada: ${formatSeconds(agent.expectedActiveSeconds)} (${agent.workedDays} día(s) × 7:30 con el ajuste configurado)`}
               >
                 {formatSeconds(agent.idleSeconds)}
               </td>

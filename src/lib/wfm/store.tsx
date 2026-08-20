@@ -33,10 +33,14 @@ export const DEFAULT_CATEGORIES: LoadCategory[] = [
   { id: "alta", name: "Alta", min: 60.1, max: 100, status: "high", order: 3 },
 ];
 
+export const DEFAULT_EXPECTED_ADJUSTMENT = 0;
+
 type Config = {
   shifts: Shift[];
   categories: LoadCategory[];
   assignments: Record<string, string | null>;
+  /** Ajuste % (positivo o negativo) sobre las horas esperadas. */
+  expectedAdjustmentPercent: number;
 };
 
 type WfmContextValue = Config & {
@@ -51,6 +55,7 @@ type WfmContextValue = Config & {
   historyList: ImportMeta[];
   setShifts: (shifts: Shift[]) => void;
   setCategories: (categories: LoadCategory[]) => void;
+  setExpectedAdjustmentPercent: (percent: number) => void;
   assignShift: (agent: string, shiftId: string | null) => void;
   applyImport: (result: ParseResult) => void;
   clearData: () => void;
@@ -68,6 +73,7 @@ function loadConfig(): Config {
     shifts: DEFAULT_SHIFTS,
     categories: DEFAULT_CATEGORIES,
     assignments: {},
+    expectedAdjustmentPercent: DEFAULT_EXPECTED_ADJUSTMENT,
   };
   if (typeof window === "undefined") return fallback;
   try {
@@ -78,6 +84,9 @@ function loadConfig(): Config {
       shifts: parsed.shifts?.length ? parsed.shifts : DEFAULT_SHIFTS,
       categories: parsed.categories?.length ? parsed.categories : DEFAULT_CATEGORIES,
       assignments: parsed.assignments ?? {},
+      expectedAdjustmentPercent: Number.isFinite(parsed.expectedAdjustmentPercent)
+        ? Number(parsed.expectedAdjustmentPercent)
+        : DEFAULT_EXPECTED_ADJUSTMENT,
     };
   } catch {
     return fallback;
@@ -89,6 +98,7 @@ export function WfmProvider({ children }: { children: ReactNode }) {
     shifts: DEFAULT_SHIFTS,
     categories: DEFAULT_CATEGORIES,
     assignments: {},
+    expectedAdjustmentPercent: DEFAULT_EXPECTED_ADJUSTMENT,
   });
   const [records, setRecords] = useState<SessionRecord[]>([]);
   const [dates, setDates] = useState<string[]>([]);
@@ -153,6 +163,8 @@ export function WfmProvider({ children }: { children: ReactNode }) {
       historyList,
       setShifts: (shifts) => setConfig((c) => ({ ...c, shifts })),
       setCategories: (categories) => setConfig((c) => ({ ...c, categories })),
+      setExpectedAdjustmentPercent: (percent) =>
+        setConfig((c) => ({ ...c, expectedAdjustmentPercent: percent })),
       assignShift: (agent, shiftId) =>
         setConfig((c) => ({ ...c, assignments: { ...c.assignments, [agent]: shiftId } })),
       applyImport,

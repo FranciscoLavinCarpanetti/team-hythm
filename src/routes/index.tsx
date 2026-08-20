@@ -78,6 +78,7 @@ function Dashboard() {
     dates,
     categories,
     shifts,
+    expectedAdjustmentPercent,
     clearData,
     importedAt,
     issues,
@@ -102,8 +103,8 @@ function Dashboard() {
   );
 
   const allAgents = useMemo(
-    () => aggregateAgents(filteredRecords, shifts, categories),
-    [filteredRecords, shifts, categories],
+    () => aggregateAgents(filteredRecords, shifts, categories, expectedAdjustmentPercent),
+    [filteredRecords, shifts, categories, expectedAdjustmentPercent],
   );
 
   const visibleAgents = useMemo(() => {
