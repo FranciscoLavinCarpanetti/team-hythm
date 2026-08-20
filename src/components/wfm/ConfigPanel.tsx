@@ -354,16 +354,17 @@ export function ConfigPanel() {
           <p className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
             Umbrales resultantes
           </p>
-          <p className="mt-1 font-mono text-xs">
-            {orderedPreview
-              .map(
-                (c) =>
-                  `${c.name}: ${c.min.toString().replace(".", ",")}% – ${c.max
-                    .toString()
-                    .replace(".", ",")}%`,
-              )
-              .join("  ·  ")}
-          </p>
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {orderedPreview.map((c) => (
+              <li key={c.id} className="flex items-center gap-1.5">
+                <CategoryBadge category={c} />
+                <span className="text-muted-foreground font-mono text-[11px]">
+                  {c.min.toString().replace(".", ",")}–{c.max.toString().replace(".", ",")}%
+                </span>
+              </li>
+            ))}
+          </ul>
+
         </div>
 
         {categoryErrors.length > 0 && (
