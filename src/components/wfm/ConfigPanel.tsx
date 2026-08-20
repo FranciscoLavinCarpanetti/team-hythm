@@ -20,6 +20,7 @@ import {
   validateCategories,
 } from "@/lib/wfm/aggregate";
 import { formatSeconds } from "@/lib/wfm/time";
+import { CategoryBadge } from "./OccupancyCell";
 import type { CategoryStatus, LoadCategory, Shift } from "@/lib/wfm/types";
 
 const STATUS_OPTIONS: { value: CategoryStatus; label: string }[] = [
