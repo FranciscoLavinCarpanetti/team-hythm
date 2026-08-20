@@ -20,16 +20,23 @@ import {
   validateCategories,
 } from "@/lib/wfm/aggregate";
 import { formatSeconds } from "@/lib/wfm/time";
-import { CategoryBadge } from "./OccupancyCell";
+import {
+  CategoryBadge,
+  STATUS_ICON,
+  STATUS_LABEL,
+  STATUS_TEXT_CLASS,
+  formatRange,
+} from "./OccupancyCell";
+import { cn } from "@/lib/utils";
 import type { CategoryStatus, LoadCategory, Shift } from "@/lib/wfm/types";
 
 const STATUS_OPTIONS: { value: CategoryStatus; label: string }[] = [
-  { value: "low", label: "🔵 Azul (baja)" },
-  { value: "moderate-low", label: "🟡 Amarillo (moderadamente baja)" },
-  { value: "balanced", label: "🟢 Verde (equilibrada)" },
-  { value: "high", label: "🟠 Naranja (alta)" },
-  { value: "very-high", label: "🔴 Rojo (muy alta)" },
-  { value: "critical", label: "🔴 Rojo intenso (crítica)" },
+  { value: "low", label: STATUS_LABEL["low"] },
+  { value: "moderate-low", label: STATUS_LABEL["moderate-low"] },
+  { value: "balanced", label: STATUS_LABEL["balanced"] },
+  { value: "high", label: STATUS_LABEL["high"] },
+  { value: "very-high", label: STATUS_LABEL["very-high"] },
+  { value: "critical", label: STATUS_LABEL["critical"] },
 ];
 
 function Section({
