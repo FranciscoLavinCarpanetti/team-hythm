@@ -202,7 +202,11 @@ export function deriveAlerts(
   const alerts: OperationalAlert[] = [];
 
   distribution
-    .filter((slice) => slice.status === "high" && slice.count > 0)
+    .filter(
+      (slice) =>
+        (slice.status === "high" || slice.status === "very-high" || slice.status === "critical") &&
+        slice.count > 0,
+    )
     .forEach((slice) => {
       alerts.push({
         id: `high-${slice.key}`,
@@ -212,7 +216,9 @@ export function deriveAlerts(
       });
     });
 
-  const lowSlices = distribution.filter((s) => s.status === "low" && s.percentage >= 50);
+  const lowSlices = distribution.filter(
+    (s) => (s.status === "low" || s.status === "moderate-low") && s.percentage >= 50,
+  );
   lowSlices.forEach((slice) => {
     alerts.push({
       id: `low-${slice.key}`,

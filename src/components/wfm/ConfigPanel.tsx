@@ -20,12 +20,16 @@ import {
   validateCategories,
 } from "@/lib/wfm/aggregate";
 import { formatSeconds } from "@/lib/wfm/time";
+import { CategoryBadge } from "./OccupancyCell";
 import type { CategoryStatus, LoadCategory, Shift } from "@/lib/wfm/types";
 
 const STATUS_OPTIONS: { value: CategoryStatus; label: string }[] = [
-  { value: "low", label: "Verde (carga baja)" },
-  { value: "balanced", label: "Ámbar (equilibrada)" },
-  { value: "high", label: "Rojo (carga alta)" },
+  { value: "low", label: "🔵 Azul (baja)" },
+  { value: "moderate-low", label: "🟡 Amarillo (moderadamente baja)" },
+  { value: "balanced", label: "🟢 Verde (equilibrada)" },
+  { value: "high", label: "🟠 Naranja (alta)" },
+  { value: "very-high", label: "🔴 Rojo (muy alta)" },
+  { value: "critical", label: "🔴 Rojo intenso (crítica)" },
 ];
 
 function Section({
@@ -217,7 +221,7 @@ export function ConfigPanel() {
                     id: `cat-${Date.now()}`,
                     name: "Nueva categoría",
                     min: 0,
-                    max: 0,
+                    max: 0.1,
                     status: "balanced",
                     order: list.length + 1,
                   },
@@ -351,16 +355,17 @@ export function ConfigPanel() {
           <p className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
             Umbrales resultantes
           </p>
-          <p className="mt-1 font-mono text-xs">
-            {orderedPreview
-              .map(
-                (c) =>
-                  `${c.name}: ${c.min.toString().replace(".", ",")}% – ${c.max
-                    .toString()
-                    .replace(".", ",")}%`,
-              )
-              .join("  ·  ")}
-          </p>
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {orderedPreview.map((c) => (
+              <li key={c.id} className="flex items-center gap-1.5">
+                <CategoryBadge category={c} />
+                <span className="text-muted-foreground font-mono text-[11px]">
+                  {c.min.toString().replace(".", ",")}–{c.max.toString().replace(".", ",")}%
+                </span>
+              </li>
+            ))}
+          </ul>
+
         </div>
 
         {categoryErrors.length > 0 && (

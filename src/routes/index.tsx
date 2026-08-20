@@ -217,7 +217,7 @@ function Dashboard() {
         {viewingHistorical && activeMeta && (
           <div
             role="status"
-            className="border-status-balanced/50 bg-status-balanced/10 text-status-balanced-foreground flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs"
+            className="border-status-low/50 bg-status-low/10 text-status-low-foreground flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 text-xs"
           >
             <span>
               Estás analizando una importación histórica en solo lectura:{" "}
