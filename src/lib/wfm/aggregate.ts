@@ -105,7 +105,7 @@ function shiftOverlapSeconds(record: SessionRecord, shift: Shift): number {
 export function shiftForSession(record: SessionRecord, shifts: Shift[]): Shift | null {
   let best: { shift: Shift; overlap: number } | null = null;
   for (const shift of shifts) {
-    const overlap = shiftOverlapSeconds(record, shift);
+    const overlap = cachedOverlapSeconds(record, shift, shifts);
     if (!best || overlap > best.overlap) best = { shift, overlap };
   }
   if (best && best.overlap > 0) return best.shift;
@@ -122,7 +122,7 @@ export function detectShift(records: SessionRecord[], shifts: Shift[]): Shift | 
   for (const record of records) {
     let matchedOverlap = 0;
     for (const shift of shifts) {
-      const overlap = shiftOverlapSeconds(record, shift);
+      const overlap = cachedOverlapSeconds(record, shift, shifts);
       if (overlap > 0) {
         weight.set(shift.id, (weight.get(shift.id) ?? 0) + overlap);
         matchedOverlap += overlap;
