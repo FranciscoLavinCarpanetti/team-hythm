@@ -141,7 +141,11 @@ export function detectShift(records: SessionRecord[], shifts: Shift[]): Shift | 
   return bestId ? (shifts.find((s) => s.id === bestId) ?? null) : null;
 }
 
-/** Reparto de días trabajados por turno (turno dominante de cada día operativo). */
+/**
+ * Reparto del turno por tiempo real de solape (no por número de días): un día
+ * con una sesión de 7 minutos no pesa igual que una jornada completa.
+ * `days` se conserva como número de días operativos con presencia en ese turno.
+ */
 export function shiftBreakdown(
   records: SessionRecord[],
   shifts: Shift[],
@@ -154,26 +158,38 @@ export function shiftBreakdown(
     else byDay.set(record.operationalDate, [record]);
   }
 
-  const days = new Map<string, { name: string; count: number }>();
+  const entries = new Map<string, { name: string; days: number; seconds: number }>();
   byDay.forEach((dayRecords) => {
     const shift = detectShift(dayRecords, shifts);
     const key = shift ? shift.id : "__none__";
     const name = shift ? shift.name : "Sin turno asignado";
-    const current = days.get(key);
-    if (current) current.count += 1;
-    else days.set(key, { name, count: 1 });
+    const seconds = dayRecords.reduce(
+      (acc, r) => acc + (r.sessionSeconds > 0 ? r.sessionSeconds : 0),
+      0,
+    );
+    const current = entries.get(key);
+    if (current) {
+      current.days += 1;
+      current.seconds += seconds;
+    } else entries.set(key, { name, days: 1, seconds });
   });
 
-  const total = Array.from(days.values()).reduce((a, x) => a + x.count, 0);
-  return Array.from(days.entries())
+  const totalSeconds = Array.from(entries.values()).reduce((a, x) => a + x.seconds, 0);
+  const totalDays = Array.from(entries.values()).reduce((a, x) => a + x.days, 0);
+  return Array.from(entries.entries())
     .map(([key, value]) => ({
       shiftId: key === "__none__" ? null : key,
       shiftName: value.name,
-      days: value.count,
-      percentage: total ? (value.count / total) * 100 : 0,
+      days: value.days,
+      percentage: totalSeconds
+        ? (value.seconds / totalSeconds) * 100
+        : totalDays
+          ? (value.days / totalDays) * 100
+          : 0,
     }))
     .sort((a, b) => b.percentage - a.percentage || a.shiftName.localeCompare(b.shiftName, "es"));
 }
+
 
 export function aggregateAgents(
   records: SessionRecord[],
