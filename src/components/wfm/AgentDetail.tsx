@@ -8,8 +8,7 @@ import {
 } from "@/components/ui/tooltip";
 import type { AgentMetrics, Shift } from "@/lib/wfm/types";
 import { agentDailyBreakdown, type Benchmark } from "@/lib/wfm/analysis";
-import { formatDateKey } from "@/lib/wfm/time";
-import { formatDateTime, formatSeconds } from "@/lib/wfm/time";
+import { formatDateKey, formatDateTime, formatSeconds } from "@/lib/wfm/time";
 import { computeOccupancy } from "@/lib/wfm/aggregate";
 import { CategoryBadge, OccupancyCell } from "./OccupancyCell";
 import { cn } from "@/lib/utils";

@@ -44,10 +44,14 @@ export function DataQualityPanel({
   quality,
   issues,
   agentsWithoutShift,
+  periodLabel,
+  undatedIssues = 0,
 }: {
   quality: DataQuality;
   issues: ParseIssue[];
   agentsWithoutShift: number;
+  periodLabel?: string;
+  undatedIssues?: number;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -59,7 +63,8 @@ export function DataQualityPanel({
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-[13px] font-semibold tracking-wide uppercase">Calidad de datos</h2>
         <p className="text-muted-foreground text-xs">
-          Ninguna fila cuestionable se altera: las descartadas se listan con su motivo.
+          {periodLabel ? `Período: ${periodLabel}. ` : ""}Ninguna fila cuestionable se altera: las
+          descartadas se listan con su motivo.
         </p>
       </div>
 
@@ -73,6 +78,13 @@ export function DataQualityPanel({
         <Stat label="Sesiones sin llamadas" value={quality.zeroCallSessions} tone="warning" />
         <Stat label="Sesiones anómalas" value={quality.anomalousSessions} tone="warning" />
       </div>
+
+      {undatedIssues > 0 && (
+        <p className="text-muted-foreground text-xs">
+          {undatedIssues} incidencia(s) sin día operativo determinable quedan fuera de cualquier
+          período y no se incluyen en estos contadores.
+        </p>
+      )}
 
       {issues.length > 0 && (
         <>
