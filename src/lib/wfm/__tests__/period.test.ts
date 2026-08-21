@@ -181,7 +181,7 @@ describe("agregación multi-día", () => {
         100,
       10,
     );
-    expect(ana.category?.id).toBe("baja");
+    expect(ana.category?.id).toBe("moderadamente-baja");
   });
 
   it("varias sesiones el mismo día cuentan un solo día trabajado", () => {
