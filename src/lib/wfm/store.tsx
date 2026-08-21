@@ -18,6 +18,7 @@ import type {
   Shift,
 } from "./types";
 import * as history from "./history";
+import { fullPeriod, normalizePeriod, type Period } from "./period";
 
 const STORAGE_KEY = "wfm-config-v1";
 
@@ -76,6 +77,9 @@ type WfmContextValue = Config & {
   quality: DataQuality | null;
   activeMeta: ImportMeta | null;
   latestImportId: string | null;
+  /** Período operativo seleccionado (from === to para un solo día). */
+  period: Period | null;
+  setPeriod: (period: Period | null) => void;
   viewingHistorical: boolean;
   historyList: ImportMeta[];
   setShifts: (shifts: Shift[]) => void;
@@ -159,6 +163,7 @@ export function WfmProvider({ children }: { children: ReactNode }) {
   const [activeMeta, setActiveMeta] = useState<ImportMeta | null>(null);
   const [latestImportId, setLatestImportId] = useState<string | null>(null);
   const [historyList, setHistoryList] = useState<ImportMeta[]>([]);
+  const [period, setPeriodState] = useState<Period | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -179,6 +184,8 @@ export function WfmProvider({ children }: { children: ReactNode }) {
     setQuality(snapshot.quality);
     setActiveMeta(snapshot.meta);
     setImportedAt(new Date(snapshot.meta.importedAt));
+    // Al cambiar de dataset el período vuelve al rango completo disponible.
+    setPeriodState(fullPeriod(snapshot.dates));
   }, []);
 
   const applyImport = useCallback(
@@ -210,6 +217,8 @@ export function WfmProvider({ children }: { children: ReactNode }) {
       quality,
       activeMeta,
       latestImportId,
+      period,
+      setPeriod: (next) => setPeriodState(next ? normalizePeriod(next) : null),
       viewingHistorical: Boolean(activeMeta && latestImportId && activeMeta.id !== latestImportId),
       historyList,
       setShifts: (shifts) => setConfig((c) => ({ ...c, shifts })),
@@ -231,6 +240,7 @@ export function WfmProvider({ children }: { children: ReactNode }) {
         setQuality(null);
         setActiveMeta(null);
         setLatestImportId(null);
+        setPeriodState(null);
       },
       viewImport: (id) => {
         const snapshot = history.getSnapshot(id);
@@ -258,6 +268,7 @@ export function WfmProvider({ children }: { children: ReactNode }) {
       activeMeta,
       latestImportId,
       historyList,
+      period,
       applyImport,
       applySnapshot,
     ],

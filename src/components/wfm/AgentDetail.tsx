@@ -6,9 +6,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { AgentMetrics } from "@/lib/wfm/types";
-import type { Benchmark } from "@/lib/wfm/analysis";
-import { formatDateTime, formatSeconds } from "@/lib/wfm/time";
+import type { AgentMetrics, Shift } from "@/lib/wfm/types";
+import { agentDailyBreakdown, type Benchmark } from "@/lib/wfm/analysis";
+import { formatDateKey, formatDateTime, formatSeconds } from "@/lib/wfm/time";
 import { computeOccupancy } from "@/lib/wfm/aggregate";
 import { CategoryBadge, OccupancyCell } from "./OccupancyCell";
 import { cn } from "@/lib/utils";
@@ -151,13 +151,122 @@ function BenchmarkBlock({
   );
 }
 
+/**
+ * Desglose diario del período: la ocupación de cada día es su propio ratio
+ * (productivo del día / sesión del día). La ocupación de la cabecera es el ratio
+ * del período y NO es la media aritmética de estas filas.
+ */
+function DailyBreakdown({
+  agent,
+  shifts,
+  referenceOccupancy,
+  tolerance,
+}: {
+  agent: AgentMetrics;
+  shifts: Shift[];
+  referenceOccupancy: number | null;
+  tolerance: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const rows = agentDailyBreakdown(agent.records, shifts);
+  if (rows.length < 2) return null;
+
+  const outside =
+    referenceOccupancy === null
+      ? null
+      : rows.filter(
+          (row) => row.occupancy !== null && Math.abs(row.occupancy - referenceOccupancy) > tolerance,
+        ).length;
+
+  return (
+    <section className="border-border rounded-md border">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
+      >
+        <span className="text-[11px] font-semibold tracking-[0.1em] uppercase">
+          Desglose diario ({rows.length} días)
+        </span>
+        <span className="text-muted-foreground text-xs">{open ? "Ocultar" : "Mostrar"}</span>
+      </button>
+      {open && (
+        <div className="space-y-2 px-3 pb-3">
+          <div className="border-border overflow-x-auto rounded-md border">
+            <table className="w-full min-w-[720px] text-xs">
+              <thead className="bg-secondary text-secondary-foreground">
+                <tr>
+                  {[
+                    "Día operativo",
+                    "Turno",
+                    "Sesiones",
+                    "Llamadas",
+                    "T. Productivo",
+                    "T. Sesión",
+                    "% Ocupación del día",
+                  ].map((label) => (
+                    <th
+                      key={label}
+                      scope="col"
+                      className="border-border/60 border-b px-2 py-1.5 text-left font-semibold"
+                    >
+                      {label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.date} className="border-border/60 border-b last:border-0">
+                    <td className="px-2 py-1.5 font-mono tabular-nums">
+                      {formatDateKey(row.date)}
+                    </td>
+                    <td className="px-2 py-1.5">{row.shiftName}</td>
+                    <td className="px-2 py-1.5 font-mono tabular-nums">{row.sessions}</td>
+                    <td className="px-2 py-1.5 font-mono tabular-nums">{row.calls}</td>
+                    <td className="px-2 py-1.5 font-mono tabular-nums">
+                      {formatSeconds(row.productiveSeconds)}
+                    </td>
+                    <td className="px-2 py-1.5 font-mono tabular-nums">
+                      {formatSeconds(row.sessionSeconds)}
+                    </td>
+                    <td className="px-2 py-1.5 font-mono font-semibold tabular-nums">
+                      {pct(row.occupancy)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-muted-foreground text-xs">
+            La ocupación de la cabecera es el ratio del período (productivo total / sesión total) y
+            no la media de estas ocupaciones diarias.
+            {outside !== null
+              ? ` ${outside} de ${rows.length} día(s) quedan fuera de la tolerancia de ±${tolerance
+                  .toFixed(1)
+                  .replace(".", ",")} pp respecto a la referencia.`
+              : ""}
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function AgentDetail({
   agent,
   benchmark,
+  shifts,
+  tolerance,
+  periodDayCount,
   onClose,
 }: {
   agent: AgentMetrics | null;
   benchmark?: Benchmark | null;
+  shifts: Shift[];
+  tolerance: number;
+  periodDayCount: number;
   onClose: () => void;
 }) {
   return (
@@ -197,6 +306,15 @@ export function AgentDetail({
             </div>
 
             {benchmark && <BenchmarkBlock benchmark={benchmark} agent={agent} />}
+
+            {periodDayCount > 1 && (
+              <DailyBreakdown
+                agent={agent}
+                shifts={shifts}
+                referenceOccupancy={benchmark?.referenceOccupancy ?? null}
+                tolerance={tolerance}
+              />
+            )}
 
             {agent.shiftBreakdown.length > 1 && (
               <section className="border-border rounded-md border p-3">

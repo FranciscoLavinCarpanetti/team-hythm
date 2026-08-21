@@ -123,6 +123,12 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
     const rowNumber = index + 2;
     const agent = String(row[col("agent")] ?? "").trim();
     const sessionId = String(row[col("sessionId")] ?? "").trim();
+    // Día operativo de la fila (inicio, con fallback a fin): se calcula antes de
+    // cualquier descarte para que la calidad de datos pueda filtrarse por período.
+    const rowStart = parseDateValue(row[col("start")]);
+    const rowEnd = parseDateValue(row[col("end")]);
+    const rowReference = rowStart ?? rowEnd;
+    const rowDate = rowReference ? toDateKey(rowReference) : null;
     if (!agent || !sessionId) {
       issues.push({
         row: rowNumber,
@@ -130,6 +136,7 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
         agent: agent || null,
         kind: "missing-key",
         severity: "error",
+        operationalDate: rowDate,
         message: "Fila descartada: falta el agente o el identificador de sesión.",
       });
       return;
@@ -144,6 +151,7 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
         agent,
         kind: "duplicate",
         severity: "warning",
+        operationalDate: rowDate,
         message: "Duplicado detectado (misma sesión y agente): excluido del agregado.",
       });
       return;
@@ -163,6 +171,7 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
         agent,
         kind: "invalid-duration",
         severity: "error",
+        operationalDate: rowDate,
         message: `Fila descartada: valor de duración no válido en ${invalidDuration[0]}.`,
       });
       return;
@@ -176,13 +185,14 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
         agent,
         kind: "invalid-calls",
         severity: "error",
+        operationalDate: rowDate,
         message: "Fila descartada: número de llamadas no válido.",
       });
       return;
     }
 
-    const start = parseDateValue(row[col("start")]);
-    const end = parseDateValue(row[col("end")]);
+    const start = rowStart;
+    const end = rowEnd;
     if (!start && !end) {
       issues.push({
         row: rowNumber,
@@ -190,6 +200,7 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
         agent,
         kind: "invalid-dates",
         severity: "warning",
+        operationalDate: rowDate,
         message: "Sesión sin fechas válidas: no se puede asignar turno ni fecha operativa.",
       });
     }
@@ -201,6 +212,7 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
         agent,
         kind: "zero-calls",
         severity: "warning",
+        operationalDate: rowDate,
         message: "Sesión sin llamadas registradas.",
       });
     }
@@ -212,6 +224,7 @@ export async function parseSessionsWorkbook(file: File): Promise<ParseResult> {
         agent,
         kind: "productive-exceeds-session",
         severity: "warning",
+        operationalDate: rowDate,
         message: "Anomalía: el tiempo productivo supera el tiempo de sesión.",
       });
     }

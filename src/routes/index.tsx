@@ -27,10 +27,19 @@ import { aggregateAgents, computeKpis } from "@/lib/wfm/aggregate";
 import {
   aggregateByShift,
   buildBenchmark,
+  dailyMetrics,
   deriveAlerts,
+  deriveDailyExceptions,
   loadDistribution,
 } from "@/lib/wfm/analysis";
-import { formatDateKey } from "@/lib/wfm/time";
+import {
+  filterByPeriod,
+  fullPeriod,
+  periodDates,
+  periodFileSuffix,
+  periodLabel,
+} from "@/lib/wfm/period";
+import { countUndatedIssues, filterIssuesByPeriod, recomputeQuality } from "@/lib/wfm/quality";
 import { UploadPanel } from "@/components/wfm/UploadPanel";
 import { KpiSummary } from "@/components/wfm/KpiSummary";
 import { OccupancyTarget } from "@/components/wfm/OccupancyTarget";
@@ -38,6 +47,8 @@ import { LoadDistribution } from "@/components/wfm/LoadDistribution";
 import { OperationalAlerts } from "@/components/wfm/OperationalAlerts";
 import { ShiftAnalysis } from "@/components/wfm/ShiftAnalysis";
 import { DataQualityPanel } from "@/components/wfm/DataQualityPanel";
+import { PeriodPicker } from "@/components/wfm/PeriodPicker";
+import { DailyExceptions } from "@/components/wfm/DailyExceptions";
 import { HistoryPanel } from "@/components/wfm/HistoryPanel";
 import { AgentTable, sortAgents, type SortState } from "@/components/wfm/AgentTable";
 import { AgentDetail } from "@/components/wfm/AgentDetail";
@@ -85,7 +96,8 @@ function Dashboard() {
     clearData,
     importedAt,
     issues,
-    quality,
+    period,
+    setPeriod,
     activeMeta,
     viewingHistorical,
     backToLatest,
@@ -93,17 +105,32 @@ function Dashboard() {
   const [search, setSearch] = useState("");
   const [shiftFilter, setShiftFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [dateFilter, setDateFilter] = useState("all");
   const [sort, setSort] = useState<SortState>({ key: "calls", dir: "desc" });
   const [selected, setSelected] = useState<AgentMetrics | null>(null);
 
-  const effectiveDate = dates.length === 1 ? dates[0]! : dateFilter;
+  // Período único normalizado que alimenta todo el pipeline. Un día se expresa
+  // como from === to, por lo que no existe una ruta de cálculo específica de 1 día.
+  const effectivePeriod = period ?? fullPeriod(dates);
 
   const filteredRecords = useMemo(
-    () =>
-      effectiveDate === "all" ? records : records.filter((r) => r.operationalDate === effectiveDate),
-    [records, effectiveDate],
+    () => filterByPeriod(records, effectivePeriod),
+    [records, effectivePeriod],
   );
+
+  const periodDayCount = useMemo(
+    () => periodDates(dates, effectivePeriod).length,
+    [dates, effectivePeriod],
+  );
+
+  const periodIssues = useMemo(
+    () => filterIssuesByPeriod(issues, effectivePeriod),
+    [issues, effectivePeriod],
+  );
+  const periodQuality = useMemo(
+    () => recomputeQuality(filteredRecords, periodIssues),
+    [filteredRecords, periodIssues],
+  );
+  const undatedIssues = useMemo(() => countUndatedIssues(issues), [issues]);
 
   const allAgents = useMemo(
     () => aggregateAgents(filteredRecords, shifts, categories, expectedAdjustmentPercent),
@@ -143,9 +170,19 @@ function Dashboard() {
     [allAgents, shifts, categories],
   );
   const alerts = useMemo(
-    () => deriveAlerts(visibleAgents, distribution, kpis, quality),
-    [visibleAgents, distribution, kpis, quality],
+    () => deriveAlerts(visibleAgents, distribution, kpis, periodQuality),
+    [visibleAgents, distribution, kpis, periodQuality],
   );
+  // Grano día-equipo: solo se calcula cuando el período abarca más de un día.
+  const dailyExceptions = useMemo(() => {
+    if (periodDayCount < 2) return null;
+    const dayRecords = visibleAgents.flatMap((agent) => agent.records);
+    return deriveDailyExceptions(
+      dailyMetrics(dayRecords),
+      occupancyTargetPercent,
+      occupancyTolerancePoints,
+    );
+  }, [visibleAgents, periodDayCount, occupancyTargetPercent, occupancyTolerancePoints]);
   const benchmark = useMemo(
     () => (selected ? buildBenchmark(selected, allAgents, shiftMetricsAll) : null),
     [selected, allAgents, shiftMetricsAll],
@@ -156,12 +193,7 @@ function Dashboard() {
   const reportRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
-  const dateRangeLabel = useMemo(() => {
-    if (effectiveDate !== "all") return formatDateKey(effectiveDate);
-    if (dates.length === 0) return "Sin fechas";
-    if (dates.length === 1) return formatDateKey(dates[0]!);
-    return `${formatDateKey(dates[0]!)} – ${formatDateKey(dates[dates.length - 1]!)}`;
-  }, [dates, effectiveDate]);
+  const dateRangeLabel = useMemo(() => periodLabel(effectivePeriod), [effectivePeriod]);
 
   const handleExport = async () => {
     setExporting(true);
@@ -169,7 +201,7 @@ function Dashboard() {
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const node = reportRef.current;
       if (node) {
-        await exportNodeAsPng(node, `informe-ocupacion-${effectiveDate === "all" ? "global" : effectiveDate}.png`);
+        await exportNodeAsPng(node, `informe-ocupacion-${periodFileSuffix(effectivePeriod)}.png`);
       }
     } finally {
       setExporting(false);
@@ -231,6 +263,10 @@ function Dashboard() {
               Volver a la última importación
             </Button>
           </div>
+        )}
+
+        {hasData && (
+          <PeriodPicker dates={dates} period={effectivePeriod} onChange={setPeriod} />
         )}
 
         <Tabs defaultValue="operacion">
@@ -301,17 +337,24 @@ function Dashboard() {
                     />
                     <LoadDistribution slices={distribution} total={visibleAgents.length} />
                     <ShiftAnalysis shifts={shiftMetrics} />
+                    {dailyExceptions && (
+                      <DailyExceptions
+                        data={dailyExceptions}
+                        target={occupancyTargetPercent}
+                        tolerance={occupancyTolerancePoints}
+                      />
+                    )}
                   </div>
                 </div>
 
                 <OperationalAlerts alerts={alerts} />
-                {quality && (
-                  <DataQualityPanel
-                    quality={quality}
-                    issues={issues}
-                    agentsWithoutShift={kpis.withoutShift}
-                  />
-                )}
+                <DataQualityPanel
+                  quality={periodQuality}
+                  issues={periodIssues}
+                  agentsWithoutShift={kpis.withoutShift}
+                  periodLabel={dateRangeLabel}
+                  undatedIssues={undatedIssues}
+                />
               </>
             )}
           </TabsContent>
@@ -373,26 +416,9 @@ function Dashboard() {
                         <SelectItem value="none">Sin categoría</SelectItem>
                       </SelectContent>
                     </Select>
-                    {dates.length > 1 && (
-                      <Select value={dateFilter} onValueChange={setDateFilter}>
-                        <SelectTrigger className="w-[180px]" aria-label="Filtrar por fecha">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todas las fechas</SelectItem>
-                          {dates.map((date) => (
-                            <SelectItem key={date} value={date}>
-                              {formatDateKey(date)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                    {dates.length === 1 && (
-                      <span className="text-muted-foreground text-xs">
-                        Fecha operativa: {formatDateKey(dates[0]!)}
-                      </span>
-                    )}
+                    <span className="text-muted-foreground text-xs">
+                      Período: {dateRangeLabel}
+                    </span>
                   </div>
                 </div>
 
@@ -420,7 +446,14 @@ function Dashboard() {
         </Tabs>
       </main>
 
-      <AgentDetail agent={selected} benchmark={benchmark} onClose={() => setSelected(null)} />
+      <AgentDetail
+        agent={selected}
+        benchmark={benchmark}
+        shifts={shifts}
+        tolerance={occupancyTolerancePoints}
+        periodDayCount={periodDayCount}
+        onClose={() => setSelected(null)}
+      />
     </div>
   );
 }

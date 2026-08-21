@@ -31,7 +31,10 @@ export type ParseIssue = {
   kind: IssueKind;
   severity: IssueSeverity;
   message: string;
+  /** Día operativo de la fila (yyyy-MM-dd) o null si no se pudo determinar. */
+  operationalDate: string | null;
 };
+
 
 export type DataQuality = {
   totalRows: number;

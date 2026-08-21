@@ -1,5 +1,5 @@
-import { computeOccupancy } from "./aggregate";
-import type { AgentMetrics, DataQuality, Kpis, LoadCategory, Shift } from "./types";
+import { computeOccupancy, detectShift } from "./aggregate";
+import type { AgentMetrics, DataQuality, Kpis, LoadCategory, SessionRecord, Shift } from "./types";
 
 export type CategorySlice = {
   key: string;
@@ -371,4 +371,126 @@ export function compareByShift(a: ShiftMetrics[], b: ShiftMetrics[]): ShiftCompa
       bAgents: right?.agents ?? 0,
     };
   });
+}
+
+/** Métricas de un día operativo, con ratios calculados sobre duraciones sumadas. */
+export type DailyMetrics = {
+  date: string;
+  agents: number;
+  sessions: number;
+  calls: number;
+  productiveSeconds: number;
+  sessionSeconds: number;
+  occupancy: number | null;
+};
+
+/**
+ * Agregado día a día (grano día-equipo). Cada día suma sus duraciones y recalcula
+ * la ocupación; nunca se promedian ocupaciones de sesión.
+ */
+export function dailyMetrics(records: SessionRecord[]): DailyMetrics[] {
+  const byDay = new Map<
+    string,
+    { agents: Set<string>; sessions: number; calls: number; prod: number; sess: number }
+  >();
+  for (const record of records) {
+    if (!record.operationalDate) continue;
+    let entry = byDay.get(record.operationalDate);
+    if (!entry) {
+      entry = { agents: new Set(), sessions: 0, calls: 0, prod: 0, sess: 0 };
+      byDay.set(record.operationalDate, entry);
+    }
+    entry.agents.add(record.agent);
+    entry.sessions += 1;
+    entry.calls += record.calls;
+    entry.prod += record.productiveSeconds;
+    entry.sess += record.sessionSeconds;
+  }
+  return Array.from(byDay.entries())
+    .map(([date, entry]) => ({
+      date,
+      agents: entry.agents.size,
+      sessions: entry.sessions,
+      calls: entry.calls,
+      productiveSeconds: entry.prod,
+      sessionSeconds: entry.sess,
+      occupancy: computeOccupancy(entry.prod, entry.sess),
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export type DailyExceptions = {
+  days: DailyMetrics[];
+  above: DailyMetrics[];
+  below: DailyMetrics[];
+  onTarget: number;
+  /** Día con mayor desviación absoluta respecto al objetivo. */
+  worst: DailyMetrics | null;
+};
+
+/**
+ * Excepciones diarias: evitan que un período equilibrado oculte un día crítico.
+ * Complementan el KPI del período, no lo sustituyen.
+ */
+export function deriveDailyExceptions(
+  days: DailyMetrics[],
+  target: number,
+  tolerance: number,
+): DailyExceptions {
+  const measurable = days.filter((d) => d.occupancy !== null);
+  const above = measurable.filter((d) => d.occupancy! > target + tolerance);
+  const below = measurable.filter((d) => d.occupancy! < target - tolerance);
+  let worst: DailyMetrics | null = null;
+  for (const day of measurable) {
+    const deviation = Math.abs(day.occupancy! - target);
+    if (!worst || deviation > Math.abs(worst.occupancy! - target)) worst = day;
+  }
+  return {
+    days,
+    above,
+    below,
+    onTarget: measurable.length - above.length - below.length,
+    worst,
+  };
+}
+
+export type AgentDailyRow = DailyMetrics & {
+  conversationSeconds: number;
+  acwSeconds: number;
+  shiftName: string;
+};
+
+/** Desglose diario de un agente: un registro por día operativo del período. */
+export function agentDailyBreakdown(
+  records: SessionRecord[],
+  shifts: Shift[],
+): AgentDailyRow[] {
+  const byDay = new Map<string, SessionRecord[]>();
+  for (const record of records) {
+    if (!record.operationalDate) continue;
+    const list = byDay.get(record.operationalDate);
+    if (list) list.push(record);
+    else byDay.set(record.operationalDate, [record]);
+  }
+  return Array.from(byDay.entries())
+    .map(([date, dayRecords]) => {
+      const sum = (pick: (r: SessionRecord) => number) =>
+        dayRecords.reduce((acc, r) => acc + pick(r), 0);
+      const productiveSeconds = sum((r) => r.productiveSeconds);
+      const sessionSeconds = sum((r) => r.sessionSeconds);
+      const shift = detectShift(dayRecords, shifts);
+      return {
+        date,
+        agents: 1,
+        sessions: dayRecords.length,
+        calls: sum((r) => r.calls),
+        conversationSeconds: sum((r) => r.conversationSeconds),
+        acwSeconds: sum((r) => r.acwSeconds),
+        productiveSeconds,
+        sessionSeconds,
+        occupancy: computeOccupancy(productiveSeconds, sessionSeconds),
+        shiftName: shift ? shift.name : "Sin turno asignado",
+      };
+    })
+    .sort((a, b) => b.date.localeCompare(a.date));
 }

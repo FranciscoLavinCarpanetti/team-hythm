@@ -68,7 +68,7 @@ export function KpiSummary({ kpis }: { kpis: Kpis }) {
       <Cell label="Llamadas" value={kpis.calls.toLocaleString("es-ES")} icon={PhoneCall} />
       <Cell label="T. Productivo" value={formatSeconds(kpis.productiveSeconds)} icon={Timer} />
       <Cell
-        label="Ocupación operativa"
+        label="Ocupación del período"
         value={pct(kpis.avgOccupancy)}
         hint="Productivo / sesión"
         icon={Gauge}
