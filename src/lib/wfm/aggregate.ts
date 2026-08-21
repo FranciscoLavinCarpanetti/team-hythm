@@ -32,7 +32,33 @@ export function isWithinShift(minutes: number, shift: Shift): boolean {
   return start < end ? minutes >= start && minutes < end : minutes >= start || minutes < end;
 }
 
+/**
+ * Caché de solape sesión×turno. El solape real en segundos se calcula una sola
+ * vez por sesión y configuración de turnos, y se reutiliza en `detectShift` y
+ * `shiftBreakdown` (antes se recalculaba en cada pasada).
+ */
+const overlapCache = new WeakMap<SessionRecord, { key: string; values: Map<string, number> }>();
+
+function shiftsKey(shifts: Shift[]): string {
+  return shifts.map((s) => `${s.id}:${s.start}-${s.end}`).join("|");
+}
+
+function cachedOverlapSeconds(record: SessionRecord, shift: Shift, shifts: Shift[]): number {
+  const key = shiftsKey(shifts);
+  let entry = overlapCache.get(record);
+  if (!entry || entry.key !== key) {
+    entry = { key, values: new Map() };
+    overlapCache.set(record, entry);
+  }
+  const cached = entry.values.get(shift.id);
+  if (cached !== undefined) return cached;
+  const value = shiftOverlapSeconds(record, shift);
+  entry.values.set(shift.id, value);
+  return value;
+}
+
 function shiftOverlapSeconds(record: SessionRecord, shift: Shift): number {
+
   if (!record.start || !record.end || record.end <= record.start) return 0;
 
   const shiftStartMinutes = toMinutes(shift.start);
