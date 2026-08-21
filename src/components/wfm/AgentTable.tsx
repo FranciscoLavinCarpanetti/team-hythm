@@ -128,29 +128,36 @@ export function AgentTable({
 
               <td className="px-3.5 py-2 font-medium">{agent.agent}</td>
               <td className="px-3.5 py-2">
-                {agent.shiftBreakdown.length > 1 ? (
-                  <div className="flex flex-col gap-0.5">
-                    {agent.shiftBreakdown.map((item) => (
-                      <span
-                        key={item.shiftId ?? "none"}
-                        className="flex items-center justify-between gap-2 text-xs"
-                        title={`${item.days} día(s)`}
-                      >
-                        <span className={cn(!item.shiftId && "text-muted-foreground italic")}>
-                          {item.shiftName}
-                        </span>
-                        <span className="font-mono tabular-nums">
-                          {item.percentage.toFixed(2).replace(".", ",")}%
-                        </span>
-                      </span>
-                    ))}
-                  </div>
-                ) : agent.shiftId ? (
-                  agent.shiftName
-                ) : (
-                  <span className="text-muted-foreground italic">Sin turno asignado</span>
-                )}
+                {(() => {
+                  const relevant = agent.shiftBreakdown.filter((item) => item.percentage >= 1);
+                  const breakdown = relevant.length ? relevant : agent.shiftBreakdown;
+                  if (breakdown.length > 1) {
+                    return (
+                      <div className="flex flex-col gap-0.5">
+                        {breakdown.map((item) => (
+                          <span
+                            key={item.shiftId ?? "none"}
+                            className="flex items-center justify-between gap-2 text-xs"
+                            title={`${item.days} día(s) · ${item.percentage.toFixed(2).replace(".", ",")}% del tiempo de sesión`}
+                          >
+                            <span className={cn(!item.shiftId && "text-muted-foreground italic")}>
+                              {item.shiftName}
+                            </span>
+                            <span className="font-mono tabular-nums">
+                              {item.percentage.toFixed(2).replace(".", ",")}%
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  }
+                  const only = breakdown[0];
+                  if (only?.shiftId) return only.shiftName;
+                  if (agent.shiftId) return agent.shiftName;
+                  return <span className="text-muted-foreground italic">Sin turno asignado</span>;
+                })()}
               </td>
+
               <td className="px-3.5 py-2 text-right font-mono tabular-nums">{agent.sessions}</td>
               <td className="px-3.5 py-2 text-right font-mono font-semibold tabular-nums">
                 {agent.calls.toLocaleString("es-ES")}
