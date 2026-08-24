@@ -50,8 +50,33 @@ export function AccessManager() {
         </h2>
         <p className="text-muted-foreground text-xs">
           Como administrador puedes agregar o quitar correos autorizados. Los administradores no
-          pueden ser eliminados.
+          pueden ser eliminados. La lista base vive en el código (
+          <code>src/lib/wfm/access-list.ts</code>): copia la lista actualizada y pégala en ese
+          archivo para que el cambio sea permanente y funcione sin conexión.
         </p>
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              const snippet = buildCodeSnippet(
+                access.allowlist,
+                access.allowlist.filter((e) => isAdminEmail(e)),
+              );
+              try {
+                await navigator.clipboard.writeText(snippet);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              } catch {
+                setError("No se pudo copiar. Copia la lista manualmente.");
+              }
+            }}
+          >
+            <ClipboardCopy className="size-4" /> Copiar lista para el código
+          </Button>
+          {copied && <span className="text-muted-foreground text-xs">Copiado al portapapeles</span>}
+        </div>
       </div>
 
       <form onSubmit={submit} className="flex flex-wrap items-start gap-2">
