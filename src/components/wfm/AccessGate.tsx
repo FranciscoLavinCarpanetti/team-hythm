@@ -3,16 +3,12 @@ import { LogOut, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-// Correos con permiso para administrar la lista de acceso. No es editable desde la UI.
-const ADMIN_EMAILS = ["g.medina@telpark.com", "d.viramalay@telpark.com", "alperez@telpark.com"];
+import { ADMIN_EMAILS, ALLOWED_EMAILS } from "@/lib/wfm/access-list";
 
-// Lista base: siempre disponible aunque no exista configuración guardada.
-const DEFAULT_ALLOWED_EMAILS = [
-  "jmontalban@telpark.com",
-  "m.sousa@telpark.com",
-  "f.lavin@telpark.com",
-  ...ADMIN_EMAILS,
-];
+// Lista base definida en código: siempre disponible aunque no exista configuración guardada.
+const DEFAULT_ALLOWED_EMAILS = Array.from(
+  new Set([...ALLOWED_EMAILS, ...ADMIN_EMAILS].map((v) => v.trim().toLowerCase())),
+);
 
 const STORAGE_KEY = "wfm.access.email";
 const ALLOWLIST_KEY = "wfm.access.allowlist";
