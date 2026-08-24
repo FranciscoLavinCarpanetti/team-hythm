@@ -54,6 +54,7 @@ import { AgentTable, sortAgents, type SortState } from "@/components/wfm/AgentTa
 import { AgentDetail } from "@/components/wfm/AgentDetail";
 import { ConfigPanel } from "@/components/wfm/ConfigPanel";
 import { AccessGate, SignOutButton } from "@/components/wfm/AccessGate";
+import { AccessManager } from "@/components/wfm/AccessManager";
 import type { AgentMetrics } from "@/lib/wfm/types";
 
 export const Route = createFileRoute("/")({
@@ -440,7 +441,8 @@ function Dashboard() {
             <HistoryPanel />
           </TabsContent>
 
-          <TabsContent value="config" className="pt-4">
+          <TabsContent value="config" className="space-y-5 pt-4">
+            <AccessManager />
             <ConfigPanel />
           </TabsContent>
         </Tabs>
