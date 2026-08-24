@@ -1,13 +1,20 @@
 import { useState } from "react";
-import { Plus, ShieldCheck, Trash2, UserCog } from "lucide-react";
+import { ClipboardCopy, Plus, ShieldCheck, Trash2, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isAdminEmail, useAccess } from "@/components/wfm/AccessGate";
+
+function buildCodeSnippet(allowlist: string[], admins: string[]) {
+  const others = allowlist.filter((email) => !admins.includes(email));
+  const list = (items: string[]) => items.map((e) => `  "${e}",`).join("\n");
+  return `// src/lib/wfm/access-list.ts\nexport const ADMIN_EMAILS = [\n${list(admins)}\n];\n\nexport const ALLOWED_EMAILS = [\n${list(others)}\n];\n`;
+}
 
 export function AccessManager() {
   const access = useAccess();
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   if (!access) return null;
 
@@ -44,8 +51,33 @@ export function AccessManager() {
         </h2>
         <p className="text-muted-foreground text-xs">
           Como administrador puedes agregar o quitar correos autorizados. Los administradores no
-          pueden ser eliminados.
+          pueden ser eliminados. La lista base vive en el código (
+          <code>src/lib/wfm/access-list.ts</code>): copia la lista actualizada y pégala en ese
+          archivo para que el cambio sea permanente y funcione sin conexión.
         </p>
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              const snippet = buildCodeSnippet(
+                access.allowlist,
+                access.allowlist.filter((e) => isAdminEmail(e)),
+              );
+              try {
+                await navigator.clipboard.writeText(snippet);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              } catch {
+                setError("No se pudo copiar. Copia la lista manualmente.");
+              }
+            }}
+          >
+            <ClipboardCopy className="size-4" /> Copiar lista para el código
+          </Button>
+          {copied && <span className="text-muted-foreground text-xs">Copiado al portapapeles</span>}
+        </div>
       </div>
 
       <form onSubmit={submit} className="flex flex-wrap items-start gap-2">
