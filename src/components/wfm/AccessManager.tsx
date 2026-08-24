@@ -14,6 +14,7 @@ export function AccessManager() {
   const access = useAccess();
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   if (!access) return null;
 
