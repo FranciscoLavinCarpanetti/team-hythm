@@ -1,8 +1,14 @@
 import { useState } from "react";
-import { Plus, ShieldCheck, Trash2, UserCog } from "lucide-react";
+import { ClipboardCopy, Plus, ShieldCheck, Trash2, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { isAdminEmail, useAccess } from "@/components/wfm/AccessGate";
+
+function buildCodeSnippet(allowlist: string[], admins: string[]) {
+  const others = allowlist.filter((email) => !admins.includes(email));
+  const list = (items: string[]) => items.map((e) => `  "${e}",`).join("\n");
+  return `// src/lib/wfm/access-list.ts\nexport const ADMIN_EMAILS = [\n${list(admins)}\n];\n\nexport const ALLOWED_EMAILS = [\n${list(others)}\n];\n`;
+}
 
 export function AccessManager() {
   const access = useAccess();
