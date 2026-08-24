@@ -3,40 +3,76 @@ import { LogOut, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const ALLOWED_EMAILS = [
+// Correos con permiso para administrar la lista de acceso. No es editable desde la UI.
+const ADMIN_EMAILS = ["g.medina@telpark.com", "d.viramalay@telpark.com"];
+
+// Lista base: siempre disponible aunque no exista configuración guardada.
+const DEFAULT_ALLOWED_EMAILS = [
   "jmontalban@telpark.com",
   "m.sousa@telpark.com",
   "f.lavin@telpark.com",
-  "d.viramalay@telpark.com",
-  "g.medina@telpark.com",
+  ...ADMIN_EMAILS,
 ];
 
 const STORAGE_KEY = "wfm.access.email";
+const ALLOWLIST_KEY = "wfm.access.allowlist";
 
 function normalize(value: string) {
   return value.trim().toLowerCase();
 }
 
-export function isAllowedEmail(value: string) {
-  return ALLOWED_EMAILS.includes(normalize(value));
+export function isAdminEmail(value: string) {
+  return ADMIN_EMAILS.includes(normalize(value));
 }
+
+function readAllowlist(): string[] {
+  try {
+    const raw = localStorage.getItem(ALLOWLIST_KEY);
+    if (!raw) return [...DEFAULT_ALLOWED_EMAILS];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [...DEFAULT_ALLOWED_EMAILS];
+    const list = parsed.filter((v): v is string => typeof v === "string").map(normalize);
+    // Los administradores nunca pueden quedar fuera de la lista.
+    return Array.from(new Set([...ADMIN_EMAILS, ...list]));
+  } catch {
+    return [...DEFAULT_ALLOWED_EMAILS];
+  }
+}
+
+function writeAllowlist(list: string[]) {
+  localStorage.setItem(ALLOWLIST_KEY, JSON.stringify(list));
+}
+
+type AccessContextValue = {
+  email: string;
+  isAdmin: boolean;
+  allowlist: string[];
+  addEmail: (value: string) => { ok: boolean; error?: string };
+  removeEmail: (value: string) => { ok: boolean; error?: string };
+  signOut: () => void;
+};
+
+const AccessContext = createContext<AccessContextValue | null>(null);
 
 export function AccessGate({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
+  const [allowlist, setAllowlist] = useState<string[]>(DEFAULT_ALLOWED_EMAILS);
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const list = readAllowlist();
+    setAllowlist(list);
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored && isAllowedEmail(stored)) setEmail(normalize(stored));
+    if (stored && list.includes(normalize(stored))) setEmail(normalize(stored));
     setReady(true);
   }, []);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const value = normalize(input);
-    if (!isAllowedEmail(value)) {
+    if (!allowlist.includes(value)) {
       setError("Este correo no tiene acceso autorizado a la aplicación.");
       return;
     }
@@ -49,6 +85,30 @@ export function AccessGate({ children }: { children: ReactNode }) {
   const signOut = () => {
     localStorage.removeItem(STORAGE_KEY);
     setEmail(null);
+  };
+
+  const isAdmin = email ? isAdminEmail(email) : false;
+
+  const addEmail = (value: string) => {
+    if (!isAdmin) return { ok: false, error: "Solo los administradores pueden modificar la lista." };
+    const next = normalize(value);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next)) return { ok: false, error: "Correo no válido." };
+    if (allowlist.includes(next)) return { ok: false, error: "El correo ya tiene acceso." };
+    const list = [...allowlist, next];
+    setAllowlist(list);
+    writeAllowlist(list);
+    return { ok: true };
+  };
+
+  const removeEmail = (value: string) => {
+    if (!isAdmin) return { ok: false, error: "Solo los administradores pueden modificar la lista." };
+    const target = normalize(value);
+    if (isAdminEmail(target))
+      return { ok: false, error: "No se puede quitar a un administrador de la lista." };
+    const list = allowlist.filter((item) => item !== target);
+    setAllowlist(list);
+    writeAllowlist(list);
+    return { ok: true };
   };
 
   if (!ready) return null;
@@ -94,7 +154,8 @@ export function AccessGate({ children }: { children: ReactNode }) {
           </form>
 
           <p className="text-muted-foreground text-[11px] leading-relaxed">
-            El acceso está limitado a una lista de correos corporativos autorizados.
+            El acceso está limitado a una lista de correos corporativos autorizados, gestionada por
+            los administradores.
           </p>
         </div>
       </div>
@@ -102,11 +163,13 @@ export function AccessGate({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AccessContext.Provider value={{ email, signOut }}>{children}</AccessContext.Provider>
+    <AccessContext.Provider
+      value={{ email, isAdmin, allowlist, addEmail, removeEmail, signOut }}
+    >
+      {children}
+    </AccessContext.Provider>
   );
 }
-
-const AccessContext = createContext<{ email: string; signOut: () => void } | null>(null);
 
 export function useAccess() {
   return useContext(AccessContext);
