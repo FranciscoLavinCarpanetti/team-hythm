@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 // Correos con permiso para administrar la lista de acceso. No es editable desde la UI.
-const ADMIN_EMAILS = ["g.medina@telpark.com", "d.viramalay@telpark.com"];
+const ADMIN_EMAILS = ["g.medina@telpark.com", "d.viramalay@telpark.com", "alperez@telpark.com"];
 
 // Lista base: siempre disponible aunque no exista configuración guardada.
 const DEFAULT_ALLOWED_EMAILS = [
