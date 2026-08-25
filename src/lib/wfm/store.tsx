@@ -20,7 +20,12 @@ import type {
 import * as history from "./history";
 import { fullPeriod, normalizePeriod, type Period } from "./period";
 import type { AuxIssue, AuxMapping, AuxParseResult, AuxRecord, MacroCategory } from "./aux-types";
-import { DEFAULT_AUX_MAPPING, DEFAULT_MACRO_CATEGORIES } from "./aux-distribution";
+import {
+  DEFAULT_AUX_MAPPING,
+  DEFAULT_MACRO_CATEGORIES,
+  sanitizeAuxMapping,
+} from "./aux-distribution";
+
 
 /** Metadatos de la importación AUX activa (independiente del fichero de sesiones). */
 export type AuxMeta = {
