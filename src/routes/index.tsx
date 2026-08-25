@@ -392,6 +392,13 @@ function Dashboard() {
                     />
                     <LoadDistribution slices={distribution} total={visibleAgents.length} />
                     <ShiftAnalysis shifts={shiftMetrics} />
+                    <AuxDistributionPanel
+                      distribution={timeDistribution}
+                      diagnostics={auxDiagnostics}
+                      auxLoaded={auxLoaded}
+                      agents={visibleAgents.length}
+                      periodLabel={dateRangeLabel}
+                    />
                     {dailyExceptions && (
                       <DailyExceptions
                         data={dailyExceptions}
@@ -410,6 +417,10 @@ function Dashboard() {
                   periodLabel={dateRangeLabel}
                   undatedIssues={undatedIssues}
                 />
+                {auxDiagnostics && (
+                  <AuxQualityPanel diagnostics={auxDiagnostics} issues={auxIssues} />
+                )}
+
               </>
             )}
           </TabsContent>
