@@ -19,6 +19,22 @@ import type {
 } from "./types";
 import * as history from "./history";
 import { fullPeriod, normalizePeriod, type Period } from "./period";
+import type { AuxIssue, AuxMapping, AuxParseResult, AuxRecord, MacroCategory } from "./aux-types";
+import { DEFAULT_AUX_MAPPING, DEFAULT_MACRO_CATEGORIES } from "./aux-distribution";
+
+/** Metadatos de la importación AUX activa (independiente del fichero de sesiones). */
+export type AuxMeta = {
+  fileName: string;
+  importedAt: string;
+  totalRows: number;
+  validRows: number;
+  invalidRows: number;
+  duplicateRows: number;
+  dateFrom: string | null;
+  dateTo: string | null;
+  states: { key: string; raw: string; count: number }[];
+};
+
 
 const STORAGE_KEY = "wfm-config-v1";
 
@@ -66,11 +82,16 @@ type Config = {
   occupancyTargetPercent: number;
   /** Tolerancia ± en puntos porcentuales. */
   occupancyTolerancePoints: number;
+  /** Macro-categorías configurables para los estados AUX. */
+  macroCategories: MacroCategory[];
+  /** Mapeo estado AUX (clave normalizada) → macro-categoría. */
+  auxMapping: AuxMapping;
 };
 
 
 type WfmContextValue = Config & {
   records: SessionRecord[];
+
   dates: string[];
   importedAt: Date | null;
   issues: ParseIssue[];
@@ -87,14 +108,23 @@ type WfmContextValue = Config & {
   setExpectedAdjustmentPercent: (percent: number) => void;
   setOccupancyTargetPercent: (percent: number) => void;
   setOccupancyTolerancePoints: (points: number) => void;
+  setMacroCategories: (categories: MacroCategory[]) => void;
+  setAuxMapping: (mapping: AuxMapping) => void;
   assignShift: (agent: string, shiftId: string | null) => void;
   applyImport: (result: ParseResult) => void;
   clearData: () => void;
+  /** Importación AUX independiente: no toca el dataset de sesiones. */
+  auxRecords: AuxRecord[];
+  auxIssues: AuxIssue[];
+  auxMeta: AuxMeta | null;
+  applyAuxImport: (result: AuxParseResult) => void;
+  clearAux: () => void;
   viewImport: (id: string) => boolean;
   backToLatest: () => void;
   removeImport: (id: string) => void;
   clearHistory: () => void;
   loadSnapshot: (id: string) => ImportSnapshot | null;
+
 };
 
 const WfmContext = createContext<WfmContextValue | null>(null);
@@ -121,6 +151,8 @@ function loadConfig(): Config {
     expectedAdjustmentPercent: DEFAULT_EXPECTED_ADJUSTMENT,
     occupancyTargetPercent: DEFAULT_OCCUPANCY_TARGET,
     occupancyTolerancePoints: DEFAULT_OCCUPANCY_TOLERANCE,
+    macroCategories: DEFAULT_MACRO_CATEGORIES,
+    auxMapping: DEFAULT_AUX_MAPPING,
   };
   if (typeof window === "undefined") return fallback;
   try {
@@ -140,6 +172,10 @@ function loadConfig(): Config {
         : DEFAULT_EXPECTED_ADJUSTMENT,
       occupancyTargetPercent: sanitizeTarget(parsed.occupancyTargetPercent),
       occupancyTolerancePoints: sanitizeTolerance(parsed.occupancyTolerancePoints),
+      macroCategories: parsed.macroCategories?.length
+        ? parsed.macroCategories
+        : DEFAULT_MACRO_CATEGORIES,
+      auxMapping: parsed.auxMapping ?? DEFAULT_AUX_MAPPING,
     };
   } catch {
     return fallback;
@@ -154,6 +190,8 @@ export function WfmProvider({ children }: { children: ReactNode }) {
     expectedAdjustmentPercent: DEFAULT_EXPECTED_ADJUSTMENT,
     occupancyTargetPercent: DEFAULT_OCCUPANCY_TARGET,
     occupancyTolerancePoints: DEFAULT_OCCUPANCY_TOLERANCE,
+    macroCategories: DEFAULT_MACRO_CATEGORIES,
+    auxMapping: DEFAULT_AUX_MAPPING,
   });
   const [records, setRecords] = useState<SessionRecord[]>([]);
   const [dates, setDates] = useState<string[]>([]);
@@ -164,6 +202,9 @@ export function WfmProvider({ children }: { children: ReactNode }) {
   const [latestImportId, setLatestImportId] = useState<string | null>(null);
   const [historyList, setHistoryList] = useState<ImportMeta[]>([]);
   const [period, setPeriodState] = useState<Period | null>(null);
+  const [auxRecords, setAuxRecords] = useState<AuxRecord[]>([]);
+  const [auxIssues, setAuxIssues] = useState<AuxIssue[]>([]);
+  const [auxMeta, setAuxMeta] = useState<AuxMeta | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -171,6 +212,8 @@ export function WfmProvider({ children }: { children: ReactNode }) {
     setHistoryList(history.listHistory());
     setHydrated(true);
   }, []);
+
+
 
   useEffect(() => {
     if (!hydrated) return;
@@ -229,6 +272,8 @@ export function WfmProvider({ children }: { children: ReactNode }) {
         setConfig((c) => ({ ...c, occupancyTargetPercent: sanitizeTarget(percent) })),
       setOccupancyTolerancePoints: (points) =>
         setConfig((c) => ({ ...c, occupancyTolerancePoints: sanitizeTolerance(points) })),
+      setMacroCategories: (macroCategories) => setConfig((c) => ({ ...c, macroCategories })),
+      setAuxMapping: (auxMapping) => setConfig((c) => ({ ...c, auxMapping })),
       assignShift: (agent, shiftId) =>
         setConfig((c) => ({ ...c, assignments: { ...c.assignments, [agent]: shiftId } })),
       applyImport,
@@ -241,6 +286,29 @@ export function WfmProvider({ children }: { children: ReactNode }) {
         setActiveMeta(null);
         setLatestImportId(null);
         setPeriodState(null);
+      },
+      auxRecords,
+      auxIssues,
+      auxMeta,
+      applyAuxImport: (result) => {
+        setAuxRecords(result.records);
+        setAuxIssues(result.issues);
+        setAuxMeta({
+          fileName: result.fileName,
+          importedAt: new Date().toISOString(),
+          totalRows: result.totalRows,
+          validRows: result.records.length,
+          invalidRows: result.issues.filter((i) => i.severity === "error").length,
+          duplicateRows: result.duplicatesRemoved,
+          dateFrom: result.dates[0] ?? null,
+          dateTo: result.dates[result.dates.length - 1] ?? null,
+          states: result.states,
+        });
+      },
+      clearAux: () => {
+        setAuxRecords([]);
+        setAuxIssues([]);
+        setAuxMeta(null);
       },
       viewImport: (id) => {
         const snapshot = history.getSnapshot(id);
@@ -269,10 +337,14 @@ export function WfmProvider({ children }: { children: ReactNode }) {
       latestImportId,
       historyList,
       period,
+      auxRecords,
+      auxIssues,
+      auxMeta,
       applyImport,
       applySnapshot,
     ],
   );
+
 
   return <WfmContext.Provider value={value}>{children}</WfmContext.Provider>;
 }
