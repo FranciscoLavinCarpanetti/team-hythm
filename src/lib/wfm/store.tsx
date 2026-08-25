@@ -175,7 +175,7 @@ function loadConfig(): Config {
       macroCategories: parsed.macroCategories?.length
         ? parsed.macroCategories
         : DEFAULT_MACRO_CATEGORIES,
-      auxMapping: parsed.auxMapping ?? DEFAULT_AUX_MAPPING,
+      auxMapping: sanitizeAuxMapping(parsed.auxMapping ?? DEFAULT_AUX_MAPPING),
     };
   } catch {
     return fallback;
