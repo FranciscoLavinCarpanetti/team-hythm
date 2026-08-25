@@ -508,6 +508,7 @@ function Dashboard() {
 
           <TabsContent value="config" className="space-y-5 pt-4">
             <AccessManager />
+            <AuxStateConfig />
             <ConfigPanel />
           </TabsContent>
         </Tabs>
@@ -518,6 +519,11 @@ function Dashboard() {
         benchmark={benchmark}
         shifts={shifts}
         tolerance={occupancyTolerancePoints}
+        auxIndex={auxIndex}
+        auxLoaded={auxLoaded}
+        macroCategories={macroCategories}
+        auxMapping={auxMapping}
+
         periodDayCount={periodDayCount}
         onClose={() => setSelected(null)}
       />
