@@ -82,11 +82,16 @@ type Config = {
   occupancyTargetPercent: number;
   /** Tolerancia ± en puntos porcentuales. */
   occupancyTolerancePoints: number;
+  /** Macro-categorías configurables para los estados AUX. */
+  macroCategories: MacroCategory[];
+  /** Mapeo estado AUX (clave normalizada) → macro-categoría. */
+  auxMapping: AuxMapping;
 };
 
 
 type WfmContextValue = Config & {
   records: SessionRecord[];
+
   dates: string[];
   importedAt: Date | null;
   issues: ParseIssue[];
