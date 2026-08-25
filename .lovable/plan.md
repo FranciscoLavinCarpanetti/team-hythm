@@ -1,247 +1,117 @@
-# Análisis multi-día (períodos): auditoría y diseño
+# Inventario funcional — Agent Performance Hub (estado actual, sin cambios de código)
 
-## 1. Resumen ejecutivo
+Documento base para manual de usuario. Todo lo indicado está verificado en el código actual.
 
-La app ya calcula casi todo de forma correcta para varios días: el pipeline agrega
-duraciones crudas de sesión y luego recalcula ratios. El problema no es la matemática,
-es el **filtro de fechas**: hoy solo existe un selector de día único (`dateFilter`,
-`src/routes/index.tsx:96-106`) y vive dentro de la pestaña Agentes, con auto-fijación al
-único día cuando el fichero tiene una sola fecha (`effectiveDate`). No existe rango.
+## 1. Arquitectura y alcance
 
-Cambios necesarios, en orden de importancia:
+- SPA React + TanStack Start, ruta única `/` (`src/routes/index.tsx`). 100 % en el navegador: no hay backend, base de datos ni cálculo en servidor.
+- Persistencia: `localStorage`. Claves: `wfm-config-v1` (configuración), `wfm-history-v1` (histórico, máx. 8 importaciones), `wfm.access.email`, `wfm.access.allowlist`.
+- Datos de sesiones y AUX viven en memoria; el histórico sí se guarda en el navegador.
 
-1. Sustituir `dateFilter: string` por un **período normalizado** `{ from, to }` en día
-   operativo (`yyyy-MM-dd`), único punto de filtrado consumido por todo el pipeline.
-   Un día = `from === to`, así que **no hay una segunda ruta de cálculo** y el resultado
-   de 1 día se conserva exactamente.
-2. Corregir dos puntos donde el multi-día ya es incorrecto hoy:
-   - **Calidad de datos** (`quality` viene del import completo, no del período filtrado):
-     `src/lib/wfm/store.tsx:158` y `src/routes/index.tsx:146,308`.
-   - **Jornada esperada / T. inactivo**: `workedDays` cuenta solo días **con** sesiones
-     (`src/lib/wfm/aggregate.ts:175-179`), por lo que ausencias, festivos y fines de
-     semana desaparecen del esperado. Requiere decisión de negocio (ver §4).
-3. Añadir capa de **excepciones diarias** (peor día / días fuera de objetivo) para que un
-   mes no diluya una sobrecarga puntual. Hoy las alertas son solo del agregado.
-4. Etiquetado: el KPI se llama `avgOccupancy` (`types.ts:106`) pero es un ratio ponderado
-   por duración, no una media. Renombrar en UI a «Ocupación operativa del período».
+## 2. Pantallas / pestañas
 
-Nada se implementa en este paso.
+Cabecera: título, nº de sesiones importadas, hora de última carga, botón "Vaciar datos", botón "Salir". Selector de período (visible con datos).
 
-## 2. Mapa de la lógica actual de 1 día
+1. **Operación** — carga de ficheros, botón "Exportar informe (PNG)", bloque exportable (cabecera de informe, KPIs, Ocupación vs objetivo, Distribución de carga, Análisis por turno, Distribución del tiempo AUX, Excepciones diarias) y, fuera del export, Alertas operativas, Calidad de datos y Calidad AUX.
+2. **Agentes** — buscador, filtro por turno, filtro por categoría, tabla ordenable y modal de detalle.
+3. **Histórico** — tabla de importaciones (Archivo, Importado, Periodo, Filas, Válidas, No válidas, Duplicadas, Agentes), ver/borrar importación, aviso de "solo lectura" y comparación de dos conjuntos.
+4. **Configuración** — Ajuste de horas esperadas, Parámetros operativos (objetivo/tolerancia), Categorías de carga, Turnos, Estados AUX y Cuentas con acceso.
 
-| Análisis | Dónde | Grano actual |
-| --- | --- | --- |
-| Filtro de fecha (día único) | `routes/index.tsx:96-106` (`dateFilter`, `effectiveDate`, `filteredRecords`) | sesión → `operationalDate` exacto |
-| Día operativo | `excel.ts:219,227` + `time.ts:63` (`toDateKey(start ?? end)`, hora local) | fecha civil del **inicio** de sesión |
-| Agregación por agente | `aggregate.ts:152-202` (`aggregateAgents`) | sesión → agente-período |
-| Ocupación | `aggregate.ts:16-19` (`computeOccupancy`) | ratio de sumas |
-| Turno dominante | `aggregate.ts:35-116` (`shiftOverlapSeconds`, `detectShift`) | solape real en segundos, cruza medianoche |
-| Reparto por turno | `aggregate.ts:119-150` (`shiftBreakdown`) | agente-día → % de días |
-| KPIs Operación | `aggregate.ts:208-230` (`computeKpis`) | suma sobre agentes visibles |
-| Distribución de carga | `analysis.ts:13-40` (`loadDistribution`) | recuento de agentes por categoría |
-| Análisis por turno | `analysis.ts:62-102` (`aggregateByShift`) | agentes del turno dominante |
-| Comparación relativa | `analysis.ts:122-186` (`buildBenchmark`) | agente vs turno/equipo (población `allAgents`) |
-| Objetivo de ocupación | `OccupancyTarget.tsx` con `kpis.avgOccupancy` | ratio agregado |
-| Alertas | `analysis.ts:196-287` (`deriveAlerts`) | agregado + calidad del import |
-| Detalle de agente | `AgentDetail.tsx` (`agent.records`) | sesiones del agente ya filtradas |
-| Calidad de datos | `excel.ts:247-255`, `DataQualityPanel.tsx` | **todo el fichero**, sin filtrar |
-| Histórico | `history.ts`, `HistoryPanel.tsx` | snapshot por importación |
-| Export PNG | `routes/index.tsx:166-177`, `export-image.ts` | nodo con KPIs + distribución + turnos |
+## 3. Entradas de datos
 
-## 3. Reglas de agregación multi-día
+### 3.1 Excel de sesiones (obligatorio, `.xlsx`)
 
-| Métrica | 1 día hoy | Fórmula período | Grano | Prohibido |
-| --- | --- | --- | --- | --- |
-| Sesiones | recuento de filas | **SUMA** de filas del período | sesión | promediar sesiones/día |
-| Llamadas | suma | **SUMA** | sesión | media diaria |
-| T. conversación / ACW / productivo / sesión | suma | **SUMA** de segundos | sesión | medias |
-| % Ocupación agente | prod/sesión | **Σ productivo / Σ sesión × 100** | agente-período | media de ocupaciones diarias |
-| Días trabajados | `distinct operationalDate` | **DISTINCT COUNT** de días operativos con sesión, dentro del período | agente-día | suma de sesiones |
-| Jornada esperada | `días × 7,5 h × factor` | igual, con la definición de «día contable» que se decida en §4 | agente-día | prorrateos implícitos |
-| T. inactivo | `max(0, esperado − productivo)` | igual, sobre totales del período | agente-período | sumar inactivos diarios sin `max` por día (decisión §4) |
-| Ocupación equipo | ratio de sumas | **Σ productivo equipo / Σ sesión equipo** | período | media de porcentajes por agente o por día |
-| Categoría de carga | umbral sobre ocupación | umbral sobre la **ocupación agregada del período** | agente-período | moda/media de categorías diarias |
-| Distribución | recuento de agentes | recuento de agentes por categoría de período | agente-período | sumar recuentos diarios (duplica agentes) |
-| Ocupación por turno | ratio de sumas del grupo | **Σ productivo / Σ sesión** de los agentes del turno en el período | turno-período | media de ocupaciones turno-día |
-| Agentes por turno | recuento | **DISTINCT COUNT** de agentes | agente-período | suma de agentes-día |
-| Desviación vs referencia | resta de ratios | resta de los dos ratios de período (p.p.) | período | media de desviaciones diarias |
-| Objetivo vs real | resta | `ocupación período − objetivo` (p.p.) | período | media de desviaciones diarias |
-| Calidad de datos | recuentos del import | recuentos **recalculados sobre las filas del período** | fila | sumar contadores de import por día |
+Columnas detectadas por nombre (con alias, sin acentos, insensible a mayúsculas; se admite coincidencia parcial). Obligatorias: Sesión, Agente, Inicio sesión, Fin sesión, (WS) Tiempo de sesión, (TC-S) Total llamadas sesión, (TT) Tiempo en conversación, (ACW) Tiempo gestión llamada, (TPT) Total tiempo productivo. Opcional: Pupitre. `SLA sesión` y `TAUX-WS` no se leen ni se muestran.
 
-**Por qué el ratio de sumas y no la media diaria:** la ocupación es una razón entre dos
-magnitudes con denominador variable. Un día con 30 min de sesión y otro con 8 h no pesan
-igual; la media aritmética de sus porcentajes les daría el mismo peso e inventaría un
-valor que no corresponde a ninguna realidad operativa. `Σprod/Σsesión` es la media
-ponderada por tiempo de sesión, que es la definición WFM correcta y ya la que usa el código.
+Reglas de validación por fila:
+- Falta agente o sesión → fila descartada (error).
+- Duplicado por `Sesión|Agente` → descartada (aviso), no se cuenta dos veces.
+- Duración no parseable (`h:mm[:ss]`, `Date`, o serial Excel: <10 = fracción de día, ≥10 = segundos) → descartada (error). Vacío = 0.
+- Llamadas no numéricas o negativas → descartada (error).
+- Sin fechas válidas → se conserva, pero sin fecha operativa ni turno (aviso).
+- 0 llamadas → aviso informativo (la sesión sí cuenta).
+- TPT > WS → aviso de anomalía (no se corrige el dato).
+- Sin ninguna fila válida, o faltan columnas, o `.xlsx` ilegible → error de importación bloqueante con detalle.
 
-**Equivalencia con 1 día:** todas las fórmulas son las actuales; cuando el período
-contiene un solo día operativo el conjunto de sesiones filtradas es idéntico al de hoy,
-por lo que cada número coincide bit a bit. Requisito de test explícito en §11.
+Fecha operativa = día natural del **inicio** (fallback: fin), por lo que una sesión que cruza medianoche pertenece íntegra al día de inicio.
 
-## 4. Reglas WFM especiales (decisiones de negocio requeridas)
+Al importar: se reemplaza el dataset, se conserva la configuración (turnos, categorías, ajustes, mapeos AUX), el período se reinicia al rango completo y se guarda una instantánea en el histórico.
 
-El modelo de esperado/inactivo es el único punto donde el código **no contiene suficiente
-información** para inferir la regla. Hoy: `workedDays × 7,5 h × (1 + ajuste%)`
-(`aggregate.ts:4,178`), con `workedDays` = días con al menos una sesión.
+### 3.2 Excel AUX de estados (opcional, `.xlsx`)
 
-Decisiones necesarias antes de implementar (marcadas como bloqueantes de la fase 3):
+Obligatorias: Sesión, Agente, Estado AUX, Inicio estado, Fin estado, TAUX. Opcional: Pupitre. Carga independiente: no altera el dataset de sesiones ni la ocupación.
 
-1. **Días sin sesiones dentro del período** (ausencia, vacaciones, libranza): ¿cuentan
-   como jornada esperada (y por tanto 7,5 h de inactivo) o se excluyen? Recomendación:
-   excluir por defecto (comportamiento actual) y mostrar «días del período sin actividad»
-   como dato informativo, no como inactividad.
-2. **Fines de semana y festivos**: el dataset no trae calendario laboral. Sin un
-   calendario configurable no se puede distinguir «no le tocaba» de «no vino».
-   Recomendación: no inventar; el criterio 1 lo cubre.
-3. **Primer/último día parcial del rango**: como el filtro es por día operativo completo,
-   no hay días parciales salvo que se permita filtrar por hora. Recomendación: rango
-   siempre por días operativos completos.
-4. **Jornadas distintas por agente**: hoy 7,5 h es global. Si existen contratos a tiempo
-   parcial hace falta jornada esperada por agente (o por turno). Flag abierto.
-5. **Turnos que cruzan medianoche**: el día operativo se toma del **inicio** de la sesión,
-   así que una sesión 23:00→07:00 pertenece al día en que empieza. Correcto y debe
-   preservarse: el filtro de rango debe comparar `operationalDate`, nunca `start`/`end`
-   crudos, o los turnos de noche se partirían entre días.
-6. **Varias sesiones por día**: ya soportado (se suman); el día cuenta una sola vez.
-7. **Productivo > esperado (sobretiempo)**: hoy `max(0, …)` oculta el exceso. En un mes
-   los excesos y defectos se compensan a nivel agregado y esa compensación se pierde con
-   el `max` por agente. Decisión requerida: ¿mostrar «sobretiempo» como métrica separada
-   (recomendado) o mantener solo el inactivo truncado en 0?
-8. **Sesiones sin fecha válida** (`operationalDate === null`, `excel.ts:186-195`): hoy
-   entran en «todas las fechas» y desaparecen al filtrar un día. Recomendación: quedan
-   fuera de cualquier período y se reportan en Calidad de datos.
+Estado normalizado quitando acentos y sufijos entre paréntesis («Descanso (30')» → `descanso`). Estados oficiales soportados (10): Formación, Descanso (30'), Pausa (7'), Nesting, Coordinación, Soporte, Gestion Personal, Tickets, Reunión, Incidencia Técnica. Cualquier otro estado se marca como no reconocido y no se conserva en configuración.
 
-## 5. Comparación relativa (multi-día)
+Descartes: falta clave, estado vacío, fechas inválidas o `fin < inicio`, TAUX inválido; duplicado exacto (sesión+agente+estado+intervalo) como aviso.
 
-Semántica a conservar (`analysis.ts:122-186`): agente vs turno dominante si el turno tiene
->1 agente y ocupación calculable; si no, vs equipo, con `fallbackReason`.
+### 3.3 Qué se puede concluir de cada fichero
 
-Diseño de período:
-- Población de referencia = **todos los agentes del período** (`allAgents`, ya es así en
-  `routes/index.tsx:141-152`), no los agentes visibles tras búsqueda/filtros. Se mantiene.
-- Turno dominante del agente = turno con mayor solape en segundos **en todo el período**
-  (`detectShift`), no el turno del último día.
-- `referenceOccupancy` = ratio agregado del turno en el período; `teamOccupancy` = ratio
-  agregado del equipo en el período. Ambos sobre sumas, nunca medias de valores diarios.
-- Tolerancia y estado (`within`/`above`/`below`) sin cambios: se aplican a la desviación
-  del período.
-- Añadir en el detalle, cuando el período tiene >1 día: el reparto por turno ya existente
-  y, opcionalmente, el número de días en que el agente quedó fuera de tolerancia.
+- **Solo sesiones**: sesiones, llamadas, TT, ACW, TPT, WS, ocupación, tiempo inactivo, categoría, turno, comparativas y desglose diario. No se puede saber en qué se emplea el tiempo no productivo.
+- **Sesiones + AUX**: además, reparto del tiempo de sesión por macro-categoría (pausas, desarrollo, etc.) y cobertura. El AUX **no** modifica ocupación, horas esperadas ni tiempo inactivo: es descriptivo.
+- **Solo AUX**: no aporta nada; sin sesiones no hay emparejamiento (la clave es Sesión+Agente).
 
-## 6. Objetivo de ocupación (multi-día)
+## 4. Cálculos y reglas de negocio
 
-- Real = `kpis.avgOccupancy` del período (ratio agregado). Renombrar la etiqueta a
-  «Ocupación del período» para no sugerir promedio de días.
-- Desviación = `real − objetivo` en p.p.; estado por tolerancia configurada (70 % ±5 pp).
-- Prohibido: promediar desviaciones diarias o contar días dentro de objetivo como si
-  fuera el estado del período.
-- Complemento recomendado en multi-día: bajo el KPI, «X de N días operativos fuera de
-  objetivo» + peor día, calculado con la ocupación agregada **de cada día** (grano
-  día-equipo). Es información adicional, no sustituye al valor del período.
+- **Ocupación** = TPT sumado / WS sumado × 100. Nunca se promedian porcentajes de sesión. Si WS = 0 → sin ocupación (`—`).
+- **Agregado por agente**: sesiones = nº de filas; llamadas, TT, ACW, TPT y WS = sumas.
+- **Días trabajados** = nº de fechas operativas distintas.
+- **Jornada activa esperada** = días trabajados × 7,5 h (8 h − 30 min) × (1 + ajuste %/100), con suelo en 0.
+- **Tiempo inactivo** = máx(0, jornada esperada − TPT).
+- **KPIs del período** (sobre los agentes visibles tras filtros): agentes, sesiones, llamadas, T. productivo, esperado, inactivo, ocupación media ponderada (TPT total / WS total), y recuentos por carga baja (low + moderate-low), equilibrada, alta (high + very-high + critical) y sin turno.
+- **Turno del agente**: solape real en segundos entre cada sesión y cada ventana de turno (con soporte de cruce de medianoche); gana el turno con más segundos. Si no hay solape, se usa la hora de inicio. Los turnos se derivan siempre de horarios configurados.
+- **Reparto por turno** (`shiftBreakdown`): por día operativo se detecta el turno dominante y se pondera por segundos de sesión de ese día; en la tabla se ocultan restos <1 %.
+- **Categorización**: primera categoría (por orden) cuyo rango contiene la ocupación, mín. y máx. inclusive.
+- **Ocupación vs objetivo**: desviación en puntos porcentuales; dentro de tolerancia = "en objetivo", fuera = por debajo / por encima.
+- **Excepciones diarias** (solo con período de 2+ días): ocupación por día (ratio propio de cada día) comparada con objetivo ± tolerancia; se identifican días por encima, por debajo, en objetivo y el día de mayor desviación.
+- **Distribución del tiempo (AUX)**: WS = 100 %. Precedencia TT → ACW → AUX. El AUX se recorta al hueco WS − TT − ACW (recorte proporcional, informado en diagnósticos); solapes AUX se resuelven por unión de intervalos (gana el intervalo más temprano) y se recortan a los límites de la sesión. Cobertura = clasificado / WS. Resto = "Sin clasificar".
 
-## 7. Alertas y excepciones
+## 5. Filtros, orden y detalle
 
-- **De período (agregado)**: concentración de carga alta, capacidad infrautilizada,
-  agentes sin turno, agentes sin ocupación calculable. Se mantienen tal cual sobre las
-  métricas del período.
-- **De calidad**: filas inválidas, duplicados, sesiones anómalas, sesiones sin llamadas
-  → deben pasar a calcularse **sobre el período filtrado** (hoy son del import completo).
-- **Nuevas, solo cuando el período tiene >1 día**: «día(s) con sobrecarga» y
-  «día(s) por debajo del objetivo», con la fecha del peor día. Grano día-equipo, obtenido
-  de un índice por día que se calcula una vez.
-- Regla de producto: el panel de Operación en modo período muestra **dos bloques**:
-  estado del período + excepciones diarias. Así un mes equilibrado no oculta un día crítico.
+- **Período**: presets Todo el período / Último día / Últimos 3 / Últimos 7 / Este mes, más rango personalizado. Filtra por fecha operativa; un solo día se expresa como `from = to`.
+- **Agentes**: búsqueda por nombre (subcadena), filtro por turno (incluye "sin turno") y por categoría (incluye "sin categoría").
+- **Orden**: por agente, turno, sesiones, llamadas, T. conversación, T. ACW, T. productivo, T. inactivo, % ocupación y categoría. Orden por defecto: llamadas descendente; empates por nombre.
+- **Detalle de agente (modal)**: turno, sesiones, llamadas, T. sesión, TT, ACW, TPT, días trabajados, jornada esperada, T. inactivo, % ocupación; distribución del tiempo (si hay AUX); comparación relativa; desglose diario (períodos multi-día); reparto por turno; y tabla de sesiones (Sesión, Inicio, Fin, Duración, Llamadas, TT, ACW, TPT, % Ocupación). Sin SLA en ningún punto.
+- **Comparación relativa**: referencia = ocupación del turno del agente si ese turno tiene más de 1 agente y ocupación calculable; si no, ocupación del equipo, indicando el motivo del fallback. Desviación en pp con tolerancia de ±5 pp; lenguaje descriptivo, sin rankings.
 
-## 8. Detalle de agente
+## 6. Configuración
 
-- Cabecera = resumen del **período** (ya lo es, porque `AgentMetrics` se agrega sobre las
-  sesiones filtradas).
-- Tabla de sesiones = sesiones del agente dentro del período, ordenadas por inicio desc
-  (comportamiento actual conservado).
-- Añadir, solo si el período >1 día: bloque plegable «Desglose diario» con una fila por
-  día operativo (sesiones, llamadas, productivo, sesión, ocupación del día, turno del día).
-  La ocupación de cada fila es el ratio de sumas de ese día; la del encabezado sigue
-  siendo la del período, y no coinciden con su media — se indica con nota explicativa.
-- Con período de 1 día, la vista queda visualmente idéntica a la actual (bloque diario
-  oculto).
+- **Ajuste de horas esperadas**: porcentaje positivo o negativo sobre la jornada de 7,5 h/día (defecto 0), con vista previa sobre el dataset activo.
+- **Parámetros operativos**: objetivo de ocupación (defecto 70 %, válido 0–100) y tolerancia (defecto ±5 pp, máx. 50).
+- **Categorías de carga** (defecto, versión 2, con validación de solapes, rangos 0–100 y nombre obligatorio): Baja 0–55, Moderadamente baja 55,01–59,99, Equilibrada 60–75, Alta 75,01–85, Muy alta 85,01–90, Crítica 90,01–100.
+- **Turnos** (defecto): Mañana 07:00–15:00, Tarde 15:00–23:00, Noche 23:00–07:00 (cruce de medianoche soportado).
+- **Estados AUX**: macro-categorías configurables (Pausas, Desarrollo, Soporte operativo, Reunión, Causa) y mapeo por defecto: descanso/pausa → Pausas; formación/nesting → Desarrollo; coordinación/soporte/tickets → Soporte operativo; reunión → Reunión; gestión personal/incidencia técnica → Causa.
+- **Cuentas con acceso**: gestión del allowlist y botón para copiar la lista lista para pegar en código.
 
-## 9. UX y modelo de estado del rango
+## 7. Calidad de datos y alertas
 
-- Estado: `period: { from: string; to: string }` (día operativo `yyyy-MM-dd`), elevado del
-  nivel de pestaña al nivel de dashboard, visible en Operación **y** Agentes.
-- Inicialización al importar: `from = dates[0]`, `to = dates[dates.length-1]` (todo el
-  fichero). Con una sola fecha, `from === to` → resultado idéntico al actual.
-- Controles: selector de rango con presets derivados de los datos disponibles
-  («Todo el período», «Último día», «Últimos 3 días», «Últimos 7 días», «Este mes») más
-  dos selectores de día inicio/fin limitados a las fechas presentes en el dataset.
-- Normalización: si `from > to` se intercambian; los días sin datos dentro del rango no
-  rompen nada (simplemente no aportan sesiones).
-- El filtro es siempre `record.operationalDate >= from && <= to` (comparación de cadenas
-  `yyyy-MM-dd`, segura lexicográficamente), preservando la semántica nocturna de §4.5.
-- La etiqueta del informe y el nombre del PNG exportado usan el rango
-  (`informe-ocupacion-<from>_<to>.png`).
-- No se crea una ruta de cálculo «modo 1 día»: solo hay un pipeline parametrizado.
+- **Calidad de datos** (recalculada por período): filas totales, válidas, no válidas, duplicadas, agentes, sesiones sin llamadas, sesiones anómalas, agentes sin turno e incidencias sin fecha (fuera de cualquier período).
+- **Calidad AUX**: filas cargadas, emparejadas, no emparejadas, duplicadas, no válidas, solapes, registros recortados y segundos recortados, registros fuera de sesión, sesiones sin intervalo, discrepancias de pupitre, estados desconocidos, estados sin macro-categoría, agentes con y sin AUX, y segundos sin clasificar.
+- **Alertas operativas** derivadas solo de datos reales: concentración de carga alta (crítica si ≥30 % de agentes), capacidad infrautilizada (≥50 % en carga baja), agentes sin turno, agentes sin ocupación calculable, filas no válidas, duplicados y sesiones anómalas o sin llamadas.
 
-## 10. Cambios de arquitectura (mínimos)
+## 8. Histórico y exportación
 
-1. `src/lib/wfm/period.ts` (nuevo): tipo `Period`, `normalizePeriod`, `filterByPeriod`,
-   `periodDays`, `periodLabel`, presets.
-2. `src/lib/wfm/store.tsx`: guardar `period` en el contexto y resetearlo en
-   `applyImport` / `applySnapshot` / `clearData`. La configuración persistida
-   (turnos, categorías, ajuste, objetivo, tolerancia) no cambia de forma.
-3. `src/lib/wfm/aggregate.ts`: sin cambios de fórmula. Añadir `aggregateByDay(records, …)`
-   reutilizando `aggregateAgents` por día, para excepciones diarias y desglose.
-4. `src/lib/wfm/quality.ts` (nuevo) o función en `excel.ts`: `recomputeQuality(records,
-   issues, period)` para que Calidad de datos y sus alertas sean del período.
-5. `src/routes/index.tsx`: reemplazar `dateFilter`/`effectiveDate` por `period`; mantener
-   los `useMemo` existentes y añadir uno para el índice diario, calculado solo si >1 día.
-6. `src/components/wfm/PeriodPicker.tsx` (nuevo) y ajustes de etiquetas en `KpiSummary`,
-   `OccupancyTarget`, `AgentDetail`, `OperationalAlerts`.
-7. Sin duplicar lógica: un solo `filterByPeriod` y un solo `aggregateAgents`.
+- Cada importación guarda instantánea completa (registros, incidencias, calidad, fechas) en el navegador, máximo 8; si se llena la cuota se descartan los registros de las más antiguas conservando metadatos (quedan como "sin registros" y no se pueden reabrir ni comparar).
+- Ver una importación pasada activa un modo solo lectura con aviso y botón de retorno a la última.
+- Comparación A/B entre dos importaciones: agentes, sesiones, llamadas, T. productivo y ocupación operativa, más comparación por turno (ocupación, llamadas, agentes).
+- Exportación: PNG del bloque de informe a 1400 px de ancho y doble resolución, fondo blanco, nombre `informe-ocupacion-<período>.png`. Excluye alertas operativas y calidad de datos. No hay exportación a Excel/CSV/PDF.
 
-## 11. Rendimiento y pruebas
+## 9. Acceso
 
-- Coste actual dominante: `shiftBreakdown` llama a `detectShift` por día y `detectShift`
-  recorre `records × shifts`, y `shiftOverlapSeconds` itera **día a día del intervalo de
-  la sesión**. Es `O(sesiones × turnos)` por agente, pero se recalcula dentro de
-  `aggregateAgents` y de nuevo en `shiftBreakdown` (doble pasada).
-  Con 30 días y ~40 000 filas eso son varios millones de operaciones por recálculo, y hoy
-  se dispara con cada cambio de filtro.
-- Optimizaciones recomendadas: calcular el solape por (sesión × turno) **una sola vez** y
-  reutilizarlo en `detectShift` y `shiftBreakdown`; indexar `records` por
-  `operationalDate` y por agente una vez tras el import; memoizar el índice diario.
-- Objetivo: filtro de rango en <150 ms para 30 días / 50 000 filas.
-- Pruebas mínimas: (a) período de 1 día = resultado actual, campo a campo;
-  (b) ocupación agregada ≠ media de ocupaciones diarias en un caso construido;
-  (c) sesión nocturna 23:00→07:00 asignada a un solo día y a un solo turno;
-  (d) agente presente solo 2 de 7 días → `workedDays = 2`;
-  (e) calidad de datos del período no suma duplicados fuera del rango;
-  (f) recuento de agentes por turno sin duplicar agentes multi-día.
+- Puerta de acceso en cliente por correo: allowlist base en `src/lib/wfm/access-list.ts` (administradores: g.medina, d.viramalay, alperez; autorizados: jmontalban, m.sousa, f.lavin — todos @telpark.com), ampliable en `localStorage`.
+- Solo administradores añaden/quitan correos; los administradores no se pueden eliminar. La sesión se recuerda en el navegador hasta "Salir".
+- **Limitación importante**: no hay verificación de identidad (ni contraseña, ni código, ni servidor). Es una barrera de UI: cualquiera que conozca un correo autorizado, o que edite el almacenamiento local, entra.
 
-## 12. Fases y criterios de aceptación
+## 10. Limitaciones y casos límite
 
-**Fase 1 — Período central (sin cambio de fórmulas).** `period.ts`, estado en store,
-`PeriodPicker` en Operación y Agentes, etiquetas y export por rango.
-Aceptación: con un fichero de 1 día todos los números y la vista son idénticos a hoy;
-con varios días el rango filtra correctamente y los turnos nocturnos no se parten.
-
-**Fase 2 — Calidad y alertas por período.** `recomputeQuality`, alertas de calidad sobre
-el rango, bloque de excepciones diarias (peor día, días fuera de objetivo).
-Aceptación: los contadores de calidad cambian al cambiar el rango y nunca superan los del
-import; un día crítico dentro de un mes equilibrado aparece señalado.
-
-**Fase 3 — Modelo de esperado/inactivo (bloqueada por §4).** Implementar la regla que se
-confirme para ausencias, jornadas por agente y sobretiempo.
-Aceptación: la previsualización de Configuración y el T. inactivo de Operación coinciden
-para cualquier rango.
-
-**Fase 4 — Detalle diario y rendimiento.** Desglose diario en el detalle de agente,
-solape de turnos calculado una vez, índices por fecha/agente.
-Aceptación: cambio de rango en <150 ms con 30 días y ~50 000 filas.
-
-## Decisiones que necesito de ti
-
-1. Días del período sin sesiones: ¿esperado 7,5 h (cuenta como inactividad) o excluidos?
-2. ¿Existe jornada distinta por agente/turno o 7,5 h es universal?
-3. ¿Quieres «sobretiempo» como métrica visible además del T. inactivo?
-4. ¿Presets de rango que quieres ver (último día, 3, 7, mes, todo)?
+- Sin backend: los datos no se comparten entre usuarios ni dispositivos; borrar datos del navegador elimina histórico y configuración (la lista de correos en código sobrevive).
+- Ocupación no calculable si WS = 0; el agente aparece sin categoría y se informa en alertas.
+- Sesiones sin fechas válidas: se agregan en importes y sumas, pero no tienen día operativo, así que quedan **fuera de cualquier filtro de período**, del desglose diario y de la detección de turno.
+- Duplicados por `Sesión|Agente`: solo se conserva la primera aparición; dos sesiones legítimas con el mismo identificador se perderían.
+- Tiempo inactivo asume 7,5 h activas por día trabajado para todos los agentes (ajustable solo de forma global): no contempla jornadas parciales, bajas ni vacaciones. Un día con una sesión de 10 minutos cuenta como día completo esperado.
+- El turno es inferido de los horarios configurados y del dato real; no existe asignación manual efectiva por agente en el cálculo.
+- El AUX exige coincidencia exacta de Sesión + Agente; nombres o identificadores distintos entre ficheros producen filas no emparejadas y cobertura baja.
+- "Sin clasificar" puede ser alto sin que implique inactividad: puede deberse a AUX ausente, recortes por precedencia o estados sin mapear.
+- El histórico compara importaciones completas, no períodos seleccionados dentro de una misma importación.
+- Todos los cálculos se hacen con la zona horaria del navegador; ficheros generados en otra zona pueden desplazar la fecha operativa.
+- SLA nunca se muestra, tal como exige el requisito.
