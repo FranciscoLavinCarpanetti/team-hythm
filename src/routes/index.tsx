@@ -113,7 +113,13 @@ function Dashboard() {
     activeMeta,
     viewingHistorical,
     backToLatest,
+    auxRecords,
+    auxIssues,
+    auxMeta,
+    macroCategories,
+    auxMapping,
   } = useWfm();
+
   const [search, setSearch] = useState("");
   const [shiftFilter, setShiftFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
