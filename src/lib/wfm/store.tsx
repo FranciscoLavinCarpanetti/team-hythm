@@ -278,7 +278,7 @@ export function WfmProvider({ children }: { children: ReactNode }) {
       setOccupancyTolerancePoints: (points) =>
         setConfig((c) => ({ ...c, occupancyTolerancePoints: sanitizeTolerance(points) })),
       setMacroCategories: (macroCategories) => setConfig((c) => ({ ...c, macroCategories })),
-      setAuxMapping: (auxMapping) => setConfig((c) => ({ ...c, auxMapping })),
+      setAuxMapping: (auxMapping) => setConfig((c) => ({ ...c, auxMapping: sanitizeAuxMapping(auxMapping) })),
       assignShift: (agent, shiftId) =>
         setConfig((c) => ({ ...c, assignments: { ...c.assignments, [agent]: shiftId } })),
       applyImport,
