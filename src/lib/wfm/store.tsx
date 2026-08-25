@@ -108,14 +108,23 @@ type WfmContextValue = Config & {
   setExpectedAdjustmentPercent: (percent: number) => void;
   setOccupancyTargetPercent: (percent: number) => void;
   setOccupancyTolerancePoints: (points: number) => void;
+  setMacroCategories: (categories: MacroCategory[]) => void;
+  setAuxMapping: (mapping: AuxMapping) => void;
   assignShift: (agent: string, shiftId: string | null) => void;
   applyImport: (result: ParseResult) => void;
   clearData: () => void;
+  /** Importación AUX independiente: no toca el dataset de sesiones. */
+  auxRecords: AuxRecord[];
+  auxIssues: AuxIssue[];
+  auxMeta: AuxMeta | null;
+  applyAuxImport: (result: AuxParseResult) => void;
+  clearAux: () => void;
   viewImport: (id: string) => boolean;
   backToLatest: () => void;
   removeImport: (id: string) => void;
   clearHistory: () => void;
   loadSnapshot: (id: string) => ImportSnapshot | null;
+
 };
 
 const WfmContext = createContext<WfmContextValue | null>(null);
