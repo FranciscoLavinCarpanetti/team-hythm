@@ -13,6 +13,15 @@ import { computeOccupancy } from "@/lib/wfm/aggregate";
 import { CategoryBadge, OccupancyCell } from "./OccupancyCell";
 import { cn } from "@/lib/utils";
 import { Info } from "lucide-react";
+import {
+  buildAuxIndex,
+  computeTimeDistribution,
+  reconcileAux,
+  type AuxIndex,
+} from "@/lib/wfm/aux-distribution";
+import type { AuxMapping, MacroCategory } from "@/lib/wfm/aux-types";
+import { TimeDistributionView } from "./TimeDistribution";
+
 
 function InfoTooltip({ text, label }: { text: string; label: string }) {
   const [open, setOpen] = useState(false);
