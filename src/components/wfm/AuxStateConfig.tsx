@@ -12,7 +12,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useWfm } from "@/lib/wfm/store";
-import { DEFAULT_AUX_MAPPING, DEFAULT_MACRO_CATEGORIES } from "@/lib/wfm/aux-distribution";
+import {
+  DEFAULT_AUX_MAPPING,
+  DEFAULT_MACRO_CATEGORIES,
+  KNOWN_AUX_STATES,
+} from "@/lib/wfm/aux-distribution";
 import { normalizeStateKey } from "@/lib/wfm/aux-excel";
 import type { AuxMapping, MacroCategory, MacroTone } from "@/lib/wfm/aux-types";
 import { TONE_OPTIONS } from "./TimeDistribution";
