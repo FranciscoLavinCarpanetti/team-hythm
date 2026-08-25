@@ -260,6 +260,10 @@ export function AgentDetail({
   shifts,
   tolerance,
   periodDayCount,
+  auxIndex,
+  auxLoaded,
+  macroCategories,
+  auxMapping,
   onClose,
 }: {
   agent: AgentMetrics | null;
@@ -267,8 +271,18 @@ export function AgentDetail({
   shifts: Shift[];
   tolerance: number;
   periodDayCount: number;
+  auxIndex: AuxIndex;
+  auxLoaded: boolean;
+  macroCategories: MacroCategory[];
+  auxMapping: AuxMapping;
   onClose: () => void;
 }) {
+  const agentDistribution = useMemo(() => {
+    if (!agent) return null;
+    const recon = reconcileAux(agent.records, auxIndex);
+    return computeTimeDistribution(agent.records, recon, macroCategories, auxMapping);
+  }, [agent, auxIndex, macroCategories, auxMapping]);
+
   return (
     <Dialog open={Boolean(agent)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
