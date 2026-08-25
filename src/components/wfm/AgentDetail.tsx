@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Tooltip,
@@ -13,6 +13,15 @@ import { computeOccupancy } from "@/lib/wfm/aggregate";
 import { CategoryBadge, OccupancyCell } from "./OccupancyCell";
 import { cn } from "@/lib/utils";
 import { Info } from "lucide-react";
+import {
+  computeTimeDistribution,
+  reconcileAux,
+  type AuxIndex,
+} from "@/lib/wfm/aux-distribution";
+
+import type { AuxMapping, MacroCategory } from "@/lib/wfm/aux-types";
+import { TimeDistributionView } from "./TimeDistribution";
+
 
 function InfoTooltip({ text, label }: { text: string; label: string }) {
   const [open, setOpen] = useState(false);
@@ -260,6 +269,10 @@ export function AgentDetail({
   shifts,
   tolerance,
   periodDayCount,
+  auxIndex,
+  auxLoaded,
+  macroCategories,
+  auxMapping,
   onClose,
 }: {
   agent: AgentMetrics | null;
@@ -267,8 +280,18 @@ export function AgentDetail({
   shifts: Shift[];
   tolerance: number;
   periodDayCount: number;
+  auxIndex: AuxIndex;
+  auxLoaded: boolean;
+  macroCategories: MacroCategory[];
+  auxMapping: AuxMapping;
   onClose: () => void;
 }) {
+  const agentDistribution = useMemo(() => {
+    if (!agent) return null;
+    const recon = reconcileAux(agent.records, auxIndex);
+    return computeTimeDistribution(agent.records, recon, macroCategories, auxMapping);
+  }, [agent, auxIndex, macroCategories, auxMapping]);
+
   return (
     <Dialog open={Boolean(agent)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
@@ -305,7 +328,27 @@ export function AgentDetail({
               />
             </div>
 
+            {agentDistribution && (
+              <section className="border-border rounded-md border p-3">
+                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                  <h3 className="text-[11px] font-semibold tracking-[0.1em] uppercase">
+                    Distribución del tiempo
+                  </h3>
+                  <p className="text-muted-foreground text-xs">
+                    Reparto descriptivo del tiempo de sesión (WS = 100 %); no altera la ocupación.
+                  </p>
+                </div>
+                <TimeDistributionView
+                  distribution={agentDistribution}
+                  auxLoaded={auxLoaded}
+                  compact
+                  emptyHint="Carga el fichero de estados AUX para desglosar el tiempo no productivo de este agente."
+                />
+              </section>
+            )}
+
             {benchmark && <BenchmarkBlock benchmark={benchmark} agent={agent} />}
+
 
             {periodDayCount > 1 && (
               <DailyBreakdown

@@ -40,7 +40,17 @@ import {
   periodLabel,
 } from "@/lib/wfm/period";
 import { countUndatedIssues, filterIssuesByPeriod, recomputeQuality } from "@/lib/wfm/quality";
+import {
+  buildAuxDiagnostics,
+  buildAuxIndex,
+  computeTimeDistribution,
+  reconcileAux,
+} from "@/lib/wfm/aux-distribution";
 import { UploadPanel } from "@/components/wfm/UploadPanel";
+import { AuxUploadPanel } from "@/components/wfm/AuxUploadPanel";
+import { AuxDistributionPanel } from "@/components/wfm/AuxDistributionPanel";
+import { AuxQualityPanel } from "@/components/wfm/AuxQualityPanel";
+import { AuxStateConfig } from "@/components/wfm/AuxStateConfig";
 import { KpiSummary } from "@/components/wfm/KpiSummary";
 import { OccupancyTarget } from "@/components/wfm/OccupancyTarget";
 import { LoadDistribution } from "@/components/wfm/LoadDistribution";
@@ -56,6 +66,7 @@ import { ConfigPanel } from "@/components/wfm/ConfigPanel";
 import { AccessGate, SignOutButton } from "@/components/wfm/AccessGate";
 import { AccessManager } from "@/components/wfm/AccessManager";
 import type { AgentMetrics } from "@/lib/wfm/types";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -102,7 +113,13 @@ function Dashboard() {
     activeMeta,
     viewingHistorical,
     backToLatest,
+    auxRecords,
+    auxIssues,
+    auxMeta,
+    macroCategories,
+    auxMapping,
   } = useWfm();
+
   const [search, setSearch] = useState("");
   const [shiftFilter, setShiftFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -189,7 +206,37 @@ function Dashboard() {
     [selected, allAgents, shiftMetricsAll],
   );
 
+  // ---- Capa AUX (adicional): reparto del tiempo de sesión, WS = 100 % ----
+  const auxIndex = useMemo(() => buildAuxIndex(auxRecords), [auxRecords]);
+  const auxLoaded = auxRecords.length > 0;
+  const visibleRecords = useMemo(
+    () => visibleAgents.flatMap((agent) => agent.records),
+    [visibleAgents],
+  );
+  const auxRecon = useMemo(() => reconcileAux(visibleRecords, auxIndex), [visibleRecords, auxIndex]);
+  const timeDistribution = useMemo(
+    () => computeTimeDistribution(visibleRecords, auxRecon, macroCategories, auxMapping),
+    [visibleRecords, auxRecon, macroCategories, auxMapping],
+  );
+  const auxDiagnostics = useMemo(
+    () =>
+      auxLoaded
+        ? buildAuxDiagnostics({
+            auxRecords,
+            recon: auxRecon,
+            distribution: timeDistribution,
+            mapping: auxMapping,
+            macros: macroCategories,
+            invalidRows: auxIssues.filter((i) => i.severity === "error").length,
+            duplicateRows: auxMeta?.duplicateRows ?? 0,
+            knownStates: Object.keys(auxMapping),
+          })
+        : null,
+    [auxLoaded, auxRecords, auxRecon, timeDistribution, auxMapping, macroCategories, auxIssues, auxMeta],
+  );
+
   const hasData = records.length > 0;
+
 
   const reportRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
@@ -288,10 +335,17 @@ function Dashboard() {
 
           <TabsContent value="operacion" className="space-y-5 pt-5">
             {!hasData ? (
-              <UploadPanel />
+              <div className="space-y-4">
+                <UploadPanel />
+                <AuxUploadPanel />
+              </div>
             ) : (
               <>
-                <UploadPanel compact />
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <UploadPanel compact />
+                  <AuxUploadPanel compact />
+                </div>
+
 
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-muted-foreground text-xs">
@@ -338,6 +392,13 @@ function Dashboard() {
                     />
                     <LoadDistribution slices={distribution} total={visibleAgents.length} />
                     <ShiftAnalysis shifts={shiftMetrics} />
+                    <AuxDistributionPanel
+                      distribution={timeDistribution}
+                      diagnostics={auxDiagnostics}
+                      auxLoaded={auxLoaded}
+                      agents={visibleAgents.length}
+                      periodLabel={dateRangeLabel}
+                    />
                     {dailyExceptions && (
                       <DailyExceptions
                         data={dailyExceptions}
@@ -356,6 +417,10 @@ function Dashboard() {
                   periodLabel={dateRangeLabel}
                   undatedIssues={undatedIssues}
                 />
+                {auxDiagnostics && (
+                  <AuxQualityPanel diagnostics={auxDiagnostics} issues={auxIssues} />
+                )}
+
               </>
             )}
           </TabsContent>
@@ -443,6 +508,7 @@ function Dashboard() {
 
           <TabsContent value="config" className="space-y-5 pt-4">
             <AccessManager />
+            <AuxStateConfig />
             <ConfigPanel />
           </TabsContent>
         </Tabs>
@@ -453,6 +519,11 @@ function Dashboard() {
         benchmark={benchmark}
         shifts={shifts}
         tolerance={occupancyTolerancePoints}
+        auxIndex={auxIndex}
+        auxLoaded={auxLoaded}
+        macroCategories={macroCategories}
+        auxMapping={auxMapping}
+
         periodDayCount={periodDayCount}
         onClose={() => setSelected(null)}
       />
