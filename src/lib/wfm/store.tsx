@@ -19,6 +19,22 @@ import type {
 } from "./types";
 import * as history from "./history";
 import { fullPeriod, normalizePeriod, type Period } from "./period";
+import type { AuxIssue, AuxMapping, AuxParseResult, AuxRecord, MacroCategory } from "./aux-types";
+import { DEFAULT_AUX_MAPPING, DEFAULT_MACRO_CATEGORIES } from "./aux-distribution";
+
+/** Metadatos de la importación AUX activa (independiente del fichero de sesiones). */
+export type AuxMeta = {
+  fileName: string;
+  importedAt: string;
+  totalRows: number;
+  validRows: number;
+  invalidRows: number;
+  duplicateRows: number;
+  dateFrom: string | null;
+  dateTo: string | null;
+  states: { key: string; raw: string; count: number }[];
+};
+
 
 const STORAGE_KEY = "wfm-config-v1";
 
