@@ -14,11 +14,11 @@ import { CategoryBadge, OccupancyCell } from "./OccupancyCell";
 import { cn } from "@/lib/utils";
 import { Info } from "lucide-react";
 import {
-  buildAuxIndex,
   computeTimeDistribution,
   reconcileAux,
   type AuxIndex,
 } from "@/lib/wfm/aux-distribution";
+
 import type { AuxMapping, MacroCategory } from "@/lib/wfm/aux-types";
 import { TimeDistributionView } from "./TimeDistribution";
 
