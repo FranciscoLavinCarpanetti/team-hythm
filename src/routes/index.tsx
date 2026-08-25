@@ -335,10 +335,17 @@ function Dashboard() {
 
           <TabsContent value="operacion" className="space-y-5 pt-5">
             {!hasData ? (
-              <UploadPanel />
+              <div className="space-y-4">
+                <UploadPanel />
+                <AuxUploadPanel />
+              </div>
             ) : (
               <>
-                <UploadPanel compact />
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <UploadPanel compact />
+                  <AuxUploadPanel compact />
+                </div>
+
 
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-muted-foreground text-xs">
