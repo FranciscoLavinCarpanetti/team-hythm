@@ -328,7 +328,27 @@ export function AgentDetail({
               />
             </div>
 
+            {agentDistribution && (
+              <section className="border-border rounded-md border p-3">
+                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                  <h3 className="text-[11px] font-semibold tracking-[0.1em] uppercase">
+                    Distribución del tiempo
+                  </h3>
+                  <p className="text-muted-foreground text-xs">
+                    Reparto descriptivo del tiempo de sesión (WS = 100 %); no altera la ocupación.
+                  </p>
+                </div>
+                <TimeDistributionView
+                  distribution={agentDistribution}
+                  auxLoaded={auxLoaded}
+                  compact
+                  emptyHint="Carga el fichero de estados AUX para desglosar el tiempo no productivo de este agente."
+                />
+              </section>
+            )}
+
             {benchmark && <BenchmarkBlock benchmark={benchmark} agent={agent} />}
+
 
             {periodDayCount > 1 && (
               <DailyBreakdown
