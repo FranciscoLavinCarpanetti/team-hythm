@@ -20,7 +20,12 @@ import type {
 import * as history from "./history";
 import { fullPeriod, normalizePeriod, type Period } from "./period";
 import type { AuxIssue, AuxMapping, AuxParseResult, AuxRecord, MacroCategory } from "./aux-types";
-import { DEFAULT_AUX_MAPPING, DEFAULT_MACRO_CATEGORIES } from "./aux-distribution";
+import {
+  DEFAULT_AUX_MAPPING,
+  DEFAULT_MACRO_CATEGORIES,
+  sanitizeAuxMapping,
+} from "./aux-distribution";
+
 
 /** Metadatos de la importación AUX activa (independiente del fichero de sesiones). */
 export type AuxMeta = {
@@ -175,7 +180,7 @@ function loadConfig(): Config {
       macroCategories: parsed.macroCategories?.length
         ? parsed.macroCategories
         : DEFAULT_MACRO_CATEGORIES,
-      auxMapping: parsed.auxMapping ?? DEFAULT_AUX_MAPPING,
+      auxMapping: sanitizeAuxMapping(parsed.auxMapping ?? DEFAULT_AUX_MAPPING),
     };
   } catch {
     return fallback;
@@ -273,7 +278,7 @@ export function WfmProvider({ children }: { children: ReactNode }) {
       setOccupancyTolerancePoints: (points) =>
         setConfig((c) => ({ ...c, occupancyTolerancePoints: sanitizeTolerance(points) })),
       setMacroCategories: (macroCategories) => setConfig((c) => ({ ...c, macroCategories })),
-      setAuxMapping: (auxMapping) => setConfig((c) => ({ ...c, auxMapping })),
+      setAuxMapping: (auxMapping) => setConfig((c) => ({ ...c, auxMapping: sanitizeAuxMapping(auxMapping) })),
       assignShift: (agent, shiftId) =>
         setConfig((c) => ({ ...c, assignments: { ...c.assignments, [agent]: shiftId } })),
       applyImport,

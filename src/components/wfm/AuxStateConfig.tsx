@@ -12,7 +12,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useWfm } from "@/lib/wfm/store";
-import { DEFAULT_AUX_MAPPING, DEFAULT_MACRO_CATEGORIES } from "@/lib/wfm/aux-distribution";
+import {
+  DEFAULT_AUX_MAPPING,
+  DEFAULT_MACRO_CATEGORIES,
+  KNOWN_AUX_STATES,
+} from "@/lib/wfm/aux-distribution";
 import { normalizeStateKey } from "@/lib/wfm/aux-excel";
 import type { AuxMapping, MacroCategory, MacroTone } from "@/lib/wfm/aux-types";
 import { TONE_OPTIONS } from "./TimeDistribution";
@@ -36,22 +40,22 @@ export function AuxStateConfig() {
     JSON.stringify(draftMacros) !== JSON.stringify(macroCategories) ||
     JSON.stringify(draftMapping) !== JSON.stringify(auxMapping);
 
-  /** Estados presentes en el fichero AUX + estados ya configurados. */
+  /** Solo los estados AUX oficiales del servicio. */
   const states = useMemo(() => {
-    const fromFile = auxMeta?.states ?? [];
-    const counts = new Map(fromFile.map((s) => [s.key, s]));
-    for (const record of auxRecords) {
-      if (!counts.has(record.stateKey)) {
-        counts.set(record.stateKey, { key: record.stateKey, raw: record.rawState, count: 0 });
+    const counts = new Map<string, number>();
+    for (const state of auxMeta?.states ?? []) counts.set(state.key, state.count);
+    if (!auxMeta) {
+      for (const record of auxRecords) {
+        counts.set(record.stateKey, (counts.get(record.stateKey) ?? 0) + 1);
       }
     }
-    for (const key of Object.keys(draftMapping)) {
-      if (!counts.has(key)) counts.set(key, { key, raw: key, count: 0 });
-    }
-    return Array.from(counts.values()).sort(
-      (a, b) => b.count - a.count || a.raw.localeCompare(b.raw, "es"),
-    );
-  }, [auxMeta, auxRecords, draftMapping]);
+    return KNOWN_AUX_STATES.map((state) => ({
+      key: state.key,
+      raw: state.raw,
+      count: counts.get(state.key) ?? 0,
+    }));
+  }, [auxMeta, auxRecords]);
+
 
   const ordered = [...draftMacros].sort((a, b) => a.order - b.order);
 
