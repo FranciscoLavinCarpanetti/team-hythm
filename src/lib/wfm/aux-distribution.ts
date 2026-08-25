@@ -17,6 +17,23 @@ export const DEFAULT_MACRO_CATEGORIES: MacroCategory[] = [
   { id: "causa", name: "Causa", order: 5, tone: "neutral" },
 ];
 
+/**
+ * Estados AUX oficiales del servicio. Cualquier otro estado que aparezca en un
+ * fichero se trata como no reconocido y no se mantiene en la configuración.
+ */
+export const KNOWN_AUX_STATES: { key: string; raw: string }[] = [
+  { key: "formacion", raw: "Formación" },
+  { key: "descanso", raw: "Descanso (30')" },
+  { key: "pausa", raw: "Pausa (7')" },
+  { key: "nesting", raw: "Nesting" },
+  { key: "coordinacion", raw: "Coordinación" },
+  { key: "soporte", raw: "Soporte" },
+  { key: "gestion personal", raw: "Gestion Personal" },
+  { key: "tickets", raw: "Tickets" },
+  { key: "reunion", raw: "Reunión" },
+  { key: "incidencia tecnica", raw: "Incidencia Técnica" },
+];
+
 /** Mapeo por defecto estado AUX (clave normalizada) → macro-categoría. */
 export const DEFAULT_AUX_MAPPING: AuxMapping = {
   descanso: "pausas",
@@ -30,6 +47,21 @@ export const DEFAULT_AUX_MAPPING: AuxMapping = {
   tickets: "soporte-operativo",
   reunion: "reunion",
 };
+
+/** Descarta del mapeo cualquier estado que no sea uno de los oficiales. */
+export function sanitizeAuxMapping(mapping: AuxMapping): AuxMapping {
+  const allowed = new Set(KNOWN_AUX_STATES.map((s) => s.key));
+  const next: AuxMapping = {};
+  for (const { key } of KNOWN_AUX_STATES) {
+    next[key] = key in mapping ? (mapping[key] ?? null) : (DEFAULT_AUX_MAPPING[key] ?? null);
+  }
+  for (const [key, value] of Object.entries(mapping)) {
+    if (!allowed.has(key)) continue;
+    next[key] = value ?? null;
+  }
+  return next;
+}
+
 
 export const SYSTEM_SLICES = {
   work: { key: "__work__", name: "Trabajo directo", tone: "primary" as const },
