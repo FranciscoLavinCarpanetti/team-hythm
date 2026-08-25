@@ -40,7 +40,17 @@ import {
   periodLabel,
 } from "@/lib/wfm/period";
 import { countUndatedIssues, filterIssuesByPeriod, recomputeQuality } from "@/lib/wfm/quality";
+import {
+  buildAuxDiagnostics,
+  buildAuxIndex,
+  computeTimeDistribution,
+  reconcileAux,
+} from "@/lib/wfm/aux-distribution";
 import { UploadPanel } from "@/components/wfm/UploadPanel";
+import { AuxUploadPanel } from "@/components/wfm/AuxUploadPanel";
+import { AuxDistributionPanel } from "@/components/wfm/AuxDistributionPanel";
+import { AuxQualityPanel } from "@/components/wfm/AuxQualityPanel";
+import { AuxStateConfig } from "@/components/wfm/AuxStateConfig";
 import { KpiSummary } from "@/components/wfm/KpiSummary";
 import { OccupancyTarget } from "@/components/wfm/OccupancyTarget";
 import { LoadDistribution } from "@/components/wfm/LoadDistribution";
@@ -56,6 +66,7 @@ import { ConfigPanel } from "@/components/wfm/ConfigPanel";
 import { AccessGate, SignOutButton } from "@/components/wfm/AccessGate";
 import { AccessManager } from "@/components/wfm/AccessManager";
 import type { AgentMetrics } from "@/lib/wfm/types";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
