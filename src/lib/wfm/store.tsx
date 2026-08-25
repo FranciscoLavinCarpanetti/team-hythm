@@ -151,6 +151,8 @@ function loadConfig(): Config {
     expectedAdjustmentPercent: DEFAULT_EXPECTED_ADJUSTMENT,
     occupancyTargetPercent: DEFAULT_OCCUPANCY_TARGET,
     occupancyTolerancePoints: DEFAULT_OCCUPANCY_TOLERANCE,
+    macroCategories: DEFAULT_MACRO_CATEGORIES,
+    auxMapping: DEFAULT_AUX_MAPPING,
   };
   if (typeof window === "undefined") return fallback;
   try {
@@ -170,6 +172,10 @@ function loadConfig(): Config {
         : DEFAULT_EXPECTED_ADJUSTMENT,
       occupancyTargetPercent: sanitizeTarget(parsed.occupancyTargetPercent),
       occupancyTolerancePoints: sanitizeTolerance(parsed.occupancyTolerancePoints),
+      macroCategories: parsed.macroCategories?.length
+        ? parsed.macroCategories
+        : DEFAULT_MACRO_CATEGORIES,
+      auxMapping: parsed.auxMapping ?? DEFAULT_AUX_MAPPING,
     };
   } catch {
     return fallback;
@@ -184,6 +190,8 @@ export function WfmProvider({ children }: { children: ReactNode }) {
     expectedAdjustmentPercent: DEFAULT_EXPECTED_ADJUSTMENT,
     occupancyTargetPercent: DEFAULT_OCCUPANCY_TARGET,
     occupancyTolerancePoints: DEFAULT_OCCUPANCY_TOLERANCE,
+    macroCategories: DEFAULT_MACRO_CATEGORIES,
+    auxMapping: DEFAULT_AUX_MAPPING,
   });
   const [records, setRecords] = useState<SessionRecord[]>([]);
   const [dates, setDates] = useState<string[]>([]);
@@ -194,6 +202,9 @@ export function WfmProvider({ children }: { children: ReactNode }) {
   const [latestImportId, setLatestImportId] = useState<string | null>(null);
   const [historyList, setHistoryList] = useState<ImportMeta[]>([]);
   const [period, setPeriodState] = useState<Period | null>(null);
+  const [auxRecords, setAuxRecords] = useState<AuxRecord[]>([]);
+  const [auxIssues, setAuxIssues] = useState<AuxIssue[]>([]);
+  const [auxMeta, setAuxMeta] = useState<AuxMeta | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -201,6 +212,8 @@ export function WfmProvider({ children }: { children: ReactNode }) {
     setHistoryList(history.listHistory());
     setHydrated(true);
   }, []);
+
+
 
   useEffect(() => {
     if (!hydrated) return;
