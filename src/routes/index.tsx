@@ -206,7 +206,37 @@ function Dashboard() {
     [selected, allAgents, shiftMetricsAll],
   );
 
+  // ---- Capa AUX (adicional): reparto del tiempo de sesión, WS = 100 % ----
+  const auxIndex = useMemo(() => buildAuxIndex(auxRecords), [auxRecords]);
+  const auxLoaded = auxRecords.length > 0;
+  const visibleRecords = useMemo(
+    () => visibleAgents.flatMap((agent) => agent.records),
+    [visibleAgents],
+  );
+  const auxRecon = useMemo(() => reconcileAux(visibleRecords, auxIndex), [visibleRecords, auxIndex]);
+  const timeDistribution = useMemo(
+    () => computeTimeDistribution(visibleRecords, auxRecon, macroCategories, auxMapping),
+    [visibleRecords, auxRecon, macroCategories, auxMapping],
+  );
+  const auxDiagnostics = useMemo(
+    () =>
+      auxLoaded
+        ? buildAuxDiagnostics({
+            auxRecords,
+            recon: auxRecon,
+            distribution: timeDistribution,
+            mapping: auxMapping,
+            macros: macroCategories,
+            invalidRows: auxIssues.filter((i) => i.severity === "error").length,
+            duplicateRows: auxMeta?.duplicateRows ?? 0,
+            knownStates: Object.keys(auxMapping),
+          })
+        : null,
+    [auxLoaded, auxRecords, auxRecon, timeDistribution, auxMapping, macroCategories, auxIssues, auxMeta],
+  );
+
   const hasData = records.length > 0;
+
 
   const reportRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
